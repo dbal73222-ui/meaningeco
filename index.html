@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>정부 지원사업 매칭 — 미닝에코</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-4">
+<div class="max-w-2xl mx-auto">
+
+  <div class="mb-6">
+    <h1 class="text-xl font-bold text-gray-900">정부 지원사업 매칭</h1>
+    <p class="text-sm text-gray-400 mt-1">미닝에코 · 실시간 공고 데이터</p>
+  </div>
+
+  <!-- 필터 -->
+  <div class="flex gap-2 mb-5 flex-wrap">
+    <button onclick="filterData('all')" id="btn-all" class="px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium">전체</button>
+    <button onclick="filterData('창업')" id="btn-창업" class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">창업</button>
+    <button onclick="filterData('기술')" id="btn-기술" class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">기술</button>
+    <button onclick="filterData('금융')" id="btn-금융" class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">금융</button>
+    <button onclick="filterData('경영')" id="btn-경영" class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">경영</button>
+  </div>
+
+  <div id="status" class="text-center py-8 text-sm text-gray-400">공고를 불러오는 중...</div>
+  <div id="cards" class="space-y-4"></div>
+  <p class="text-center text-xs text-gray-300 mt-6">데이터 출처: 중소벤처기업부 기업마당 · 공공데이터포털</p>
+</div>
+
+<script>
+// ✅ 직접 외부 API가 아닌 Netlify 프록시를 통해 호출
+const PROXY = '/api/bizinfo';
+let allData = [];
+
+function dday(endDate) {
+  if (!endDate) return null;
+  const end = new Date(endDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'));
+  const today = new Date();
+  const diff = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return null;
+  if (diff === 0) return '오늘 마감';
+  return 'D-' + diff;
+}
+
+function renderCards(data) {
+  const container = document.getElementById('cards');
+  const status    = document.getElementById('status');
+
+  if (!data.length) {
+    status.textContent    = '해당 분야 공고가 없어요.';
+    status.style.display  = 'block';
+    container.innerHTML   = '';
+    return;
+  }
+
+  status.style.display = 'none';
+  container.innerHTML = data.map(item => {
+    const dd = dday(item.prdEnd);
+    if (!dd) return '';
+    const isUrgent = dd.startsWith('D-') && parseInt(dd.slice(2)) <= 7;
+    return `
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <div class="flex justify-between items-start mb-3">
+          <span class="text-xs font-bold px-2 py-1 rounded-full bg-blue-50 text-blue-600">${item.sprtBizDiv || '지원사업'}</span>
+          <span class="text-xs font-bold ${isUrgent ? 'text-red-500' : 'text-gray-400'}">${dd}</span>
+        </div>
+        <p class="font-bold text-base mb-1 leading-snug">${item.sprtBizNm || '-'}</p>
+        <p class="text-xs text-gray-400 mb-3">${item.mngtRgnNm || ''} · ${item.excInsttNm || '-'}</p>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="bg-gray-50 rounded-xl p-3">
+            <p class="text-xs text-gray-400 mb-0.5">접수 시작</p>
+            <p class="text-sm font-bold">${item.prdSt ? item.prdSt.replace(/(\d{4})(\d{2})(\d{2})/, '$1.$2.$3') : '-'}</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-3">
+            <p class="text-xs text-gray-400 mb-0.5">마감일</p>
+            <p class="text-sm font-bold ${isUrgent ? 'text-red-500' : ''}">${item.prdEnd ? item.prdEnd.replace(/(\d{4})(\d{2})(\d{2})/, '$1.$2.$3') : '-'}</p>
+          </div>
+        </div>
+        <a href="${item.detailUrl || '#'}" target="_blank"
+           class="block w-full py-2.5 rounded-xl bg-black text-white text-xs font-bold text-center">
+          공고 보기 →
+        </a>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterData(type) {
+  document.querySelectorAll('[id^="btn-"]').forEach(btn => {
+    btn.className = 'px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500';
+  });
+  document.getElementById('btn-' + type).className =
+    'px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium';
+
+  const filtered = type === 'all'
+    ? allData
+    : allData.filter(d => (d.sprtBizDiv || '').includes(type));
+  renderCards(filtered);
+}
+
+async function loadData() {
+  try {
+    const res  = await fetch(`${PROXY}?pageNo=1&numOfRows=50`);
+    const json = await res.json();
+    const items = json?.response?.body?.items?.item || [];
+    allData = (Array.isArray(items) ? items : [items])
+      .filter(d => dday(d.prdEnd) !== null)
+      .sort((a, b) => (a.prdEnd || '').localeCompare(b.prdEnd || ''));
+    renderCards(allData);
+  } catch (e) {
+    document.getElementById('status').textContent =
+      '데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.';
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
