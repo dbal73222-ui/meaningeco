@@ -828,7 +828,14 @@ async function fetchSource(url, sourceName) {
     const res  = await fetch(url);
     const json = await res.json();
     const items = (json.items || [])
-      .filter(d => !d.endDe || dday(d.endDe) !== null)
+      .filter(d => {
+        // endDe가 없으면 상시모집으로 포함
+        if (!d.endDe) return true;
+        const dd = dday(d.endDe);
+        // dday가 null이면 날짜 파싱 실패 or 마감 — 나라장터는 날짜형식이 다를 수 있어 파싱 실패시 포함
+        if (dd === null && d.endDe.length < 8) return true; // 날짜 형식 이상 → 포함
+        return dd !== null; // 마감 안 된 것만 포함
+      })
       .map(d => ({ ...d, source: d.source || sourceName }));
     return { items, ok: true };
   } catch {
