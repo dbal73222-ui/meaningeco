@@ -10,7 +10,7 @@
 const https = require('https');
 
 const BASE_HOST = 'apis.data.go.kr';
-const BID_PATH  = '/1230000/BidPublicInfoService04/getBidPblancListInfoServc';  // 서비스 입찰공고
+const BID_PATH  = '/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc';  // 서비스 입찰공고
 
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
