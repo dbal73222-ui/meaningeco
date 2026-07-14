@@ -70,12 +70,18 @@ exports.handler = async event => {
   const p = event.queryStringParameters || {};
   const pageNo    = p.pageNo    || '1';
   const numOfRows = p.numOfRows || '30';
-  // 키워드 검색 지원
-  const inqClsCode = p.inqClsCode || '1';  // 1: 공고명
+
+  // 날짜 범위: 오늘 ~ 한 달 후 (yyyyMMddHHmm 형식)
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const fmt = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const end = new Date(now); end.setMonth(end.getMonth() + 1);
+  const inqryBgnDt = fmt(now);
+  const inqryEndDt = fmt(end);
 
   const url = `https://${BASE_HOST}${BID_PATH}?serviceKey=${encodeURIComponent(KEY)}`
             + `&pageNo=${pageNo}&numOfRows=${numOfRows}&type=json`
-            + `&inqClsCode=${inqClsCode}`;
+            + `&inqryDiv=1&inqryBgnDt=${inqryBgnDt}&inqryEndDt=${inqryEndDt}`;
 
   try {
     const res = await httpsGet(url);
