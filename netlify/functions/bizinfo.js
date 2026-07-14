@@ -1,5 +1,5 @@
 const API_KEY = '2301e3f5202350fe07f8ec100c3b54f0730095626136f833d819c9f9ce43b265';
-const BASE_URL = 'https://apis.data.go.kr/B553077/knowbiz_bizinfo/getMainList';
+const BASE_URL = 'https://apis.data.go.kr/1130000/MsmeSbizPblanc/getMsmeSbizPblanc';
 
 exports.handler = async (event) => {
   const headers = {
@@ -14,12 +14,12 @@ exports.handler = async (event) => {
   }
 
   const params = event.queryStringParameters || {};
-  const pageNo   = params.pageNo   || '1';
+  const pageNo    = params.pageNo    || '1';
   const numOfRows = params.numOfRows || '50';
 
   const url =
     `${BASE_URL}?serviceKey=${API_KEY}` +
-    `&pageNo=${pageNo}&numOfRows=${numOfRows}&returnType=json`;
+    `&pageNo=${pageNo}&numOfRows=${numOfRows}&dataType=json`;
 
   try {
     const res = await fetch(url);
