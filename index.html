@@ -52,7 +52,6 @@ function renderCards(data) {
   const container = document.getElementById('cards');
   const status    = document.getElementById('status');
 
-  // 마감일 없는 것도 표시 (상시모집 등)
   if (!data.length) {
     status.textContent   = '해당 분야 공고가 없어요.';
     status.style.display = 'block';
@@ -64,7 +63,7 @@ function renderCards(data) {
   container.innerHTML  = data.map(item => {
     const dd       = dday(item.endDe);
     const isUrgent = dd && dd.startsWith('D-') && parseInt(dd.slice(2)) <= 7;
-    const ddLabel  = dd || '상시모집';
+    const ddLabel  = dd || (item.endDe ? '마감' : '상시모집');
     const startFmt = parseDate(item.startDe)?.replace(/-/g, '.') || '-';
     const endFmt   = parseDate(item.endDe)?.replace(/-/g, '.') || '상시';
 
@@ -114,7 +113,10 @@ async function loadData() {
   try {
     const res  = await fetch(`${PROXY}?pageNo=1&numOfRows=50`);
     const json = await res.json();
-    allData = json.items || [];
+    allData = (json.items || []).filter(d => {
+      if (!d.endDe) return true; // 마감일 없으면 상시모집으로 표시
+      return dday(d.endDe) !== null; // 마감일 지난 건 제외
+    });
     renderCards(allData);
   } catch (e) {
     console.error(e);
