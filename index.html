@@ -3,125 +3,715 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>정부 지원사업 매칭 — 미닝에코</title>
+<title>정부 지원사업 AI Copilot — 미닝에코</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap');
+*{font-family:'Pretendard',-apple-system,sans-serif;box-sizing:border-box;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.fade-up{animation:fadeUp .4s ease both}
+.spin{animation:spin 1s linear infinite}
+.shimmer{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;}
+.card-hover{transition:all .2s ease;}
+.card-hover:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.08);}
+.tab-active{background:#111;color:#fff;}
+.tab-inactive{background:#fff;border:1px solid #E5E7EB;color:#6B7280;}
+.score-ring{stroke-dasharray:251.2;stroke-dashoffset:251.2;transition:stroke-dashoffset 1s ease;}
+.drawer{transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);}
+.drawer.open{transform:translateY(0);}
+.overlay{opacity:0;pointer-events:none;transition:opacity .3s;}
+.overlay.show{opacity:1;pointer-events:auto;}
+.checklist-item input:checked+label{text-decoration:line-through;color:#9CA3AF;}
+.star{color:#D1D5DB;font-size:18px;transition:color .2s;}
+.star.lit{color:#F59E0B;}
+.bookmark-btn.active{background:#FEF3C7;border-color:#FCD34D;color:#D97706;}
+pre{white-space:pre-wrap;word-break:break-word;}
+.prose p{margin-bottom:0.75rem;line-height:1.7;}
+.prose h3{font-weight:700;margin-bottom:0.5rem;margin-top:1.25rem;}
+.prose ul{list-style:disc;padding-left:1.25rem;margin-bottom:0.75rem;}
+.prose ul li{margin-bottom:0.25rem;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:#E5E7EB;border-radius:4px;}
+</style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4">
-<div class="max-w-2xl mx-auto">
+<body class="bg-gray-50 min-h-screen">
 
-  <div class="mb-6">
-    <h1 class="text-xl font-bold text-gray-900">정부 지원사업 매칭</h1>
-    <p class="text-sm text-gray-400 mt-1">미닝에코 · 실시간 공고 데이터</p>
+<!-- ══ OVERLAY ══ -->
+<div id="overlay" class="overlay fixed inset-0 bg-black/40 z-40" onclick="closeDrawer()"></div>
+
+<!-- ══ DRAWER ══ -->
+<div id="drawer" class="drawer fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[92vh] overflow-y-auto">
+  <div class="sticky top-0 bg-white z-10 px-5 pt-4 pb-3 border-b border-gray-100">
+    <div class="flex justify-between items-center">
+      <div>
+        <p id="drawer-eyebrow" class="text-xs text-gray-400 font-medium"></p>
+        <p id="drawer-title" class="font-bold text-base leading-snug mt-0.5"></p>
+      </div>
+      <button onclick="closeDrawer()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-sm">✕</button>
+    </div>
   </div>
-
-  <div class="flex gap-2 mb-5 flex-wrap">
-    <button onclick="filterData('all')"        id="btn-all"        class="px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium">전체</button>
-    <button onclick="filterData('창업')"       id="btn-창업"       class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">창업</button>
-    <button onclick="filterData('멘토링')"     id="btn-멘토링"     class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">멘토링</button>
-    <button onclick="filterData('자금')"       id="btn-자금"       class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">자금</button>
-    <button onclick="filterData('글로벌')"     id="btn-글로벌"     class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">글로벌</button>
-  </div>
-
-  <div id="status" class="text-center py-8 text-sm text-gray-400">공고를 불러오는 중...</div>
-  <div id="cards" class="space-y-4"></div>
-  <p class="text-center text-xs text-gray-300 mt-6">데이터 출처: 창업진흥원 K-Startup · 공공데이터포털</p>
+  <div id="drawer-body" class="px-5 py-4"></div>
 </div>
 
-<script>
-const PROXY = '/api/bizinfo';
-let allData = [];
+<!-- ══ MAIN ══ -->
+<div class="max-w-2xl mx-auto px-4 pt-6 pb-20">
 
+  <!-- 헤더 -->
+  <div class="mb-5">
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">미닝에코 내부용</span>
+    </div>
+    <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">지원사업 AI Copilot</h1>
+    <p class="text-sm text-gray-400 mt-0.5">공고 탐색부터 사업계획서 초안까지</p>
+  </div>
+
+  <!-- 탭 -->
+  <div class="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
+    <button onclick="switchTab('공고')" id="tab-공고" class="tab-active px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">📋 공고</button>
+    <button onclick="switchTab('북마크')" id="tab-북마크" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">🔖 북마크</button>
+    <button onclick="switchTab('비교')" id="tab-비교" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">⚖️ 비교</button>
+    <button onclick="switchTab('대시보드')" id="tab-대시보드" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">📊 대시보드</button>
+    <button onclick="switchTab('프로필')" id="tab-프로필" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">🏢 회사 프로필</button>
+  </div>
+
+  <!-- 공고 탭 -->
+  <div id="pane-공고">
+    <!-- 필터 -->
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <button onclick="filterData('all')"    id="btn-all"    class="filter-btn active px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium">전체</button>
+      <button onclick="filterData('창업')"   id="btn-창업"   class="filter-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">창업</button>
+      <button onclick="filterData('멘토링')" id="btn-멘토링" class="filter-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">멘토링</button>
+      <button onclick="filterData('자금')"   id="btn-자금"   class="filter-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">자금</button>
+      <button onclick="filterData('글로벌')" id="btn-글로벌" class="filter-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">글로벌</button>
+    </div>
+    <div id="status" class="text-center py-10 text-sm text-gray-400">
+      <div class="w-6 h-6 border-2 border-gray-200 border-t-gray-600 rounded-full spin mx-auto mb-3"></div>
+      공고를 불러오는 중...
+    </div>
+    <div id="cards" class="space-y-3"></div>
+    <p class="text-center text-xs text-gray-300 mt-6">출처: 창업진흥원 K-Startup · 공공데이터포털</p>
+  </div>
+
+  <!-- 북마크 탭 -->
+  <div id="pane-북마크" class="hidden">
+    <div id="bookmark-empty" class="text-center py-16">
+      <p class="text-3xl mb-3">🔖</p>
+      <p class="text-sm text-gray-500 font-medium">저장된 공고가 없어요</p>
+      <p class="text-xs text-gray-400 mt-1">공고 카드에서 북마크를 눌러보세요</p>
+    </div>
+    <div id="bookmark-cards" class="space-y-3"></div>
+  </div>
+
+  <!-- 비교 탭 -->
+  <div id="pane-비교" class="hidden">
+    <div id="compare-empty" class="text-center py-16">
+      <p class="text-3xl mb-3">⚖️</p>
+      <p class="text-sm text-gray-500 font-medium">비교할 공고를 선택해주세요</p>
+      <p class="text-xs text-gray-400 mt-1">공고 카드 하단 '비교에 추가' 버튼을 눌러요 (최대 2개)</p>
+    </div>
+    <div id="compare-panel" class="hidden"></div>
+  </div>
+
+  <!-- 대시보드 탭 -->
+  <div id="pane-대시보드" class="hidden">
+    <div class="grid grid-cols-2 gap-3 mb-5">
+      <div class="bg-white rounded-2xl border border-gray-100 p-4">
+        <p class="text-xs text-gray-400 mb-1">이번 달 추천 공고</p>
+        <p class="text-3xl font-extrabold text-gray-900" id="dash-total">—</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-4">
+        <p class="text-xs text-gray-400 mb-1">높은 적합도 (80%+)</p>
+        <p class="text-3xl font-extrabold text-emerald-600" id="dash-high">—</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-4">
+        <p class="text-xs text-gray-400 mb-1">북마크</p>
+        <p class="text-3xl font-extrabold text-amber-500" id="dash-bookmarks">—</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-4">
+        <p class="text-xs text-gray-400 mb-1">마감 임박 (D-7)</p>
+        <p class="text-3xl font-extrabold text-red-500" id="dash-urgent">—</p>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+      <p class="text-sm font-bold mb-3">🔥 적합도 Top 5</p>
+      <div id="dash-top5" class="space-y-2.5"></div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-4">
+      <p class="text-sm font-bold mb-3">⏰ 마감 임박</p>
+      <div id="dash-urgent-list" class="space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- 프로필 탭 -->
+  <div id="pane-프로필" class="hidden">
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-4">
+      <p class="text-sm font-bold mb-4">🏢 미닝에코 프로필</p>
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-gray-500 block mb-1.5">사업 분야 (선택)</label>
+          <div class="flex flex-wrap gap-2" id="field-tags"></div>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 block mb-1.5">주요 기술</label>
+          <div class="flex flex-wrap gap-2" id="tech-tags"></div>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 block mb-2">창업 연도</label>
+          <select id="profile-year" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none">
+            <option value="2020">2020년</option>
+            <option value="2021">2021년</option>
+            <option value="2022" selected>2022년</option>
+            <option value="2023">2023년</option>
+            <option value="2024">2024년</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 block mb-2">회사 소개 (사업계획서 생성에 활용)</label>
+          <textarea id="profile-intro" rows="4" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none resize-none" placeholder="미닝에코는 AI 기반 콘텐츠·행사 운영 스타트업으로, ESG 분야 B2B 서비스를 제공합니다..."></textarea>
+        </div>
+        <button onclick="saveProfile()" class="w-full py-3 bg-black text-white rounded-xl text-sm font-bold">저장하기</button>
+      </div>
+    </div>
+    <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
+      <p class="text-xs font-bold text-emerald-700 mb-1">💡 프로필이 정확할수록</p>
+      <p class="text-xs text-emerald-600">적합도 분석과 사업계획서 초안의 품질이 높아져요.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ TOAST ══ -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm px-5 py-2.5 rounded-full shadow-lg opacity-0 transition-opacity pointer-events-none"></div>
+
+<script>
+/* ════ 상수 / 설정 ════ */
+const PROXY = '/api/bizinfo';
+const AI_PROXY = '/api/ai';  /* Netlify Function: ai.js */
+
+const COMPANY_PROFILE = {
+  fields: ['AI', '콘텐츠', '행사 운영', 'ESG', '창업', '교육', '서비스 운영'],
+  techs:  ['LLM', 'OCR', '운영 플랫폼'],
+  year:   2022,
+  intro:  '미닝에코는 AI 기반 콘텐츠·행사 운영 스타트업으로, ESG 분야 B2B 서비스를 제공합니다. LLM과 OCR 기반 솔루션으로 기업 교육 및 행사 운영 자동화를 지원합니다.',
+};
+
+const SCORE_WEIGHTS = [
+  { key: 'AI',       pts: 20, label: 'AI 기술 관련' },
+  { key: '행사',     pts: 20, label: '행사 운영' },
+  { key: '콘텐츠',  pts: 20, label: '콘텐츠 제작' },
+  { key: 'ESG',     pts: 15, label: 'ESG 분야' },
+  { key: '교육',    pts: 10, label: '교육·멘토링' },
+  { key: '창업',    pts: 10, label: '창업 기업 대상' },
+  { key: '전국',    pts:  5, label: '전국 모집' },
+];
+
+/* ════ 전역 상태 ════ */
+let allData      = [];
+let bookmarks    = JSON.parse(localStorage.getItem('me_bookmarks') || '[]');
+let compareList  = JSON.parse(localStorage.getItem('me_compare')   || '[]');
+let profile      = JSON.parse(localStorage.getItem('me_profile')   || JSON.stringify(COMPANY_PROFILE));
+let activeTab    = '공고';
+let activeFilter = 'all';
+
+/* ════ 유틸 ════ */
 function parseDate(str) {
   if (!str || str.length < 8) return null;
   return `${str.slice(0,4)}-${str.slice(4,6)}-${str.slice(6,8)}`;
 }
-
 function dday(endDe) {
-  const endStr = parseDate(endDe);
-  if (!endStr) return null;
-  const end   = new Date(endStr);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diff  = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
-  if (diff < 0)   return null;
-  if (diff === 0)  return '오늘 마감';
-  return 'D-' + diff;
+  const s = parseDate(endDe); if (!s) return null;
+  const diff = Math.ceil((new Date(s) - new Date(new Date().toDateString())) / 86400000);
+  if (diff < 0) return null;
+  return diff === 0 ? '오늘 마감' : `D-${diff}`;
 }
+function fmtDate(str) { return parseDate(str)?.replace(/-/g, '.') || '—'; }
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.opacity = '1';
+  setTimeout(() => el.style.opacity = '0', 2200);
+}
+function saveLocal(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-function renderCards(data) {
-  const container = document.getElementById('cards');
-  const status    = document.getElementById('status');
-
-  if (!data.length) {
-    status.textContent   = '해당 분야 공고가 없어요.';
-    status.style.display = 'block';
-    container.innerHTML  = '';
-    return;
+/* ════ 적합도 계산 ════ */
+function calcScore(item) {
+  const text = [item.pblancNm, item.category, item.excInsttNm, item.target, item.region].join(' ');
+  let total = 0; const matched = [];
+  for (const w of SCORE_WEIGHTS) {
+    if (text.includes(w.key)) { total += w.pts; matched.push(w); }
   }
-
-  status.style.display = 'none';
-  container.innerHTML  = data.map(item => {
-    const dd       = dday(item.endDe);
-    const isUrgent = dd && dd.startsWith('D-') && parseInt(dd.slice(2)) <= 7;
-    const ddLabel  = dd || (item.endDe ? '마감' : '상시모집');
-    const startFmt = parseDate(item.startDe)?.replace(/-/g, '.') || '-';
-    const endFmt   = parseDate(item.endDe)?.replace(/-/g, '.') || '상시';
-
-    return `
-      <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <div class="flex justify-between items-start mb-3">
-          <span class="text-xs font-bold px-2 py-1 rounded-full bg-blue-50 text-blue-600">
-            ${item.category || '지원사업'}
-          </span>
-          <span class="text-xs font-bold ${isUrgent ? 'text-red-500' : 'text-gray-400'}">${ddLabel}</span>
-        </div>
-        <p class="font-bold text-base mb-1 leading-snug">${item.pblancNm || '-'}</p>
-        <p class="text-xs text-gray-400 mb-3">${item.jrsdInsttNm || ''} ${item.region ? '· ' + item.region : ''}</p>
-        <div class="grid grid-cols-2 gap-2 mb-3">
-          <div class="bg-gray-50 rounded-xl p-3">
-            <p class="text-xs text-gray-400 mb-0.5">접수 시작</p>
-            <p class="text-sm font-bold">${startFmt}</p>
-          </div>
-          <div class="bg-gray-50 rounded-xl p-3">
-            <p class="text-xs text-gray-400 mb-0.5">마감일</p>
-            <p class="text-sm font-bold ${isUrgent ? 'text-red-500' : ''}">${endFmt}</p>
-          </div>
-        </div>
-        <a href="${item.pblancUrl || '#'}" target="_blank"
-           class="block w-full py-2.5 rounded-xl bg-black text-white text-xs font-bold text-center">
-          공고 보기 →
-        </a>
-      </div>
-    `;
-  }).join('');
+  // 창업 연도 계산
+  const age = new Date().getFullYear() - profile.year;
+  if (age <= 7) { total += 10; matched.push({ pts: 10, label: `창업 ${age}년 (7년 이하)` }); }
+  return { score: Math.min(100, total), matched };
 }
 
-function filterData(type) {
-  document.querySelectorAll('[id^="btn-"]').forEach(btn => {
-    btn.className = 'px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500';
-  });
-  document.getElementById('btn-' + type).className =
-    'px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium';
+function scoreColor(s) {
+  if (s >= 80) return { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', ring: '#10B981' };
+  if (s >= 60) return { text: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200',    ring: '#3B82F6' };
+  if (s >= 40) return { text: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-200',   ring: '#F59E0B' };
+  return            { text: 'text-gray-400',      bg: 'bg-gray-50',    border: 'border-gray-200',    ring: '#D1D5DB' };
+}
 
-  const filtered = type === 'all'
-    ? allData
-    : allData.filter(d => (d.category || '').includes(type) || (d.pblancNm || '').includes(type));
+function stars(score) {
+  const n = Math.round(score / 20);
+  return Array.from({length:5}, (_,i) => `<span class="star ${i < n ? 'lit' : ''}">★</span>`).join('');
+}
+
+/* ════ 탭 ════ */
+function switchTab(name) {
+  activeTab = name;
+  ['공고','북마크','비교','대시보드','프로필'].forEach(t => {
+    document.getElementById(`tab-${t}`).className = (t === name ? 'tab-active' : 'tab-inactive') + ' px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0';
+    document.getElementById(`pane-${t}`).classList.toggle('hidden', t !== name);
+  });
+  if (name === '북마크')   renderBookmarks();
+  if (name === '비교')     renderCompare();
+  if (name === '대시보드') renderDashboard();
+  if (name === '프로필')   renderProfile();
+}
+
+/* ════ 필터 ════ */
+function filterData(type) {
+  activeFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.className = 'filter-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500';
+  });
+  document.getElementById('btn-' + type).className = 'filter-btn px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium';
+  const filtered = type === 'all' ? allData
+    : allData.filter(d => (d.category||'').includes(type) || (d.pblancNm||'').includes(type));
   renderCards(filtered);
 }
 
+/* ════ 카드 렌더 ════ */
+function renderCards(data) {
+  const container = document.getElementById('cards');
+  const status    = document.getElementById('status');
+  if (!data.length) { status.textContent = '해당 분야 공고가 없어요.'; status.style.display='block'; container.innerHTML=''; return; }
+  status.style.display = 'none';
+
+  container.innerHTML = data.map((item, i) => {
+    const { score, matched } = calcScore(item);
+    const col   = scoreColor(score);
+    const dd    = dday(item.endDe);
+    const isUrgent = dd && dd.startsWith('D-') && parseInt(dd.slice(2)) <= 7;
+    const ddLabel  = dd || (item.endDe ? '마감' : '상시모집');
+    const bm    = bookmarks.some(b => b.pblancNm === item.pblancNm);
+    const inCmp = compareList.some(c => c.pblancNm === item.pblancNm);
+
+    return `<div class="bg-white rounded-2xl border border-gray-100 p-5 card-hover fade-up" style="animation-delay:${i*0.04}s">
+      <div class="flex justify-between items-start mb-3">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-bold px-2 py-1 rounded-full bg-blue-50 text-blue-600">${item.category||'지원사업'}</span>
+          <div class="${col.bg} ${col.border} border rounded-full px-2 py-0.5 flex items-center gap-1">
+            <div class="text-sm">${stars(score)}</div>
+            <span class="text-xs font-bold ${col.text}">${score}%</span>
+          </div>
+        </div>
+        <span class="text-xs font-bold flex-shrink-0 ${isUrgent?'text-red-500':'text-gray-400'}">${ddLabel}</span>
+      </div>
+      <p class="font-bold text-base mb-1 leading-snug">${item.pblancNm||'—'}</p>
+      <p class="text-xs text-gray-400 mb-3">${item.jrsdInsttNm||''} ${item.region?'· '+item.region:''}</p>
+
+      <!-- 추천 이유 미리보기 -->
+      ${matched.length ? `<div class="flex flex-wrap gap-1.5 mb-3">
+        ${matched.slice(0,3).map(m=>`<span class="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500">✓ ${m.label}</span>`).join('')}
+        ${matched.length>3?`<span class="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-400">+${matched.length-3}</span>`:''}
+      </div>` : ''}
+
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <div class="bg-gray-50 rounded-xl p-2.5">
+          <p class="text-xs text-gray-400 mb-0.5">접수 시작</p>
+          <p class="text-sm font-bold">${fmtDate(item.startDe)}</p>
+        </div>
+        <div class="bg-gray-50 rounded-xl p-2.5">
+          <p class="text-xs text-gray-400 mb-0.5">마감일</p>
+          <p class="text-sm font-bold ${isUrgent?'text-red-500':''}">${fmtDate(item.endDe)||'상시'}</p>
+        </div>
+      </div>
+
+      <!-- 액션 버튼 -->
+      <div class="flex gap-2">
+        <a href="${item.pblancUrl||'#'}" target="_blank"
+           class="flex-1 py-2.5 rounded-xl bg-black text-white text-xs font-bold text-center">공고 보기 →</a>
+        <button onclick='openAnalysis(${JSON.stringify(item).replace(/'/g,"&#39;")})' class="px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700">AI 분석</button>
+        <button onclick='toggleBookmark(${JSON.stringify(item).replace(/'/g,"&#39;")})' id="bm-${i}"
+          class="px-3 py-2.5 rounded-xl border text-xs font-bold bookmark-btn ${bm?'active':'border-gray-200 text-gray-400'}">
+          ${bm?'🔖':'🔖'}
+        </button>
+      </div>
+      <button onclick='addToCompare(${JSON.stringify(item).replace(/'/g,"&#39;")})' class="w-full mt-2 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400 ${inCmp?'bg-blue-50 text-blue-500 border-blue-200':''}">
+        ${inCmp?'✓ 비교 목록에 있음':'+ 비교에 추가'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+/* ════ AI 분석 드로어 ════ */
+async function openAnalysis(item) {
+  const { score, matched } = calcScore(item);
+  const col = scoreColor(score);
+  openDrawer(item.pblancNm, 'AI 공고 분석');
+  document.getElementById('drawer-body').innerHTML = `
+    <!-- 적합도 링 -->
+    <div class="flex items-center gap-5 mb-5 p-4 ${col.bg} rounded-2xl border ${col.border}">
+      <svg width="72" height="72" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r="32" fill="none" stroke="#E5E7EB" stroke-width="8"/>
+        <circle cx="40" cy="40" r="32" fill="none" stroke="${col.ring}" stroke-width="8"
+          stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="${201-(201*score/100)}"
+          transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1s ease"/>
+      </svg>
+      <div>
+        <p class="text-3xl font-extrabold ${col.text}">${score}%</p>
+        <p class="text-xs text-gray-500 mt-0.5">미닝에코 적합도</p>
+        <div class="text-base mt-1">${stars(score)}</div>
+      </div>
+    </div>
+
+    <!-- 추천 이유 -->
+    <div class="mb-5">
+      <p class="text-sm font-bold mb-2">✅ 추천 이유</p>
+      ${matched.length ? `<div class="space-y-1.5">
+        ${matched.map(m=>`<div class="flex items-center gap-2 text-sm">
+          <span class="w-8 text-xs font-bold text-emerald-600 text-right">+${m.pts}</span>
+          <span class="text-gray-700">${m.label}</span>
+        </div>`).join('')}
+      </div>` : '<p class="text-xs text-gray-400">매칭 항목이 없어요</p>'}
+    </div>
+
+    <!-- AI 요약 -->
+    <div class="mb-5">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-sm font-bold">💡 AI 공고 요약</p>
+        <button onclick="runAISummary('${encodeURIComponent(item.pblancNm)}','${encodeURIComponent(item.jrsdInsttNm||'')}','${encodeURIComponent(item.target||'')}','${encodeURIComponent(item.category||'')}')" 
+          class="text-xs px-3 py-1.5 bg-black text-white rounded-full font-medium">요약 생성</button>
+      </div>
+      <div id="ai-summary" class="bg-gray-50 rounded-xl p-4 text-sm text-gray-400 min-h-[80px]">
+        '요약 생성' 버튼을 누르면 AI가 이 공고를 3줄로 정리해드려요.
+      </div>
+    </div>
+
+    <!-- 신청 체크리스트 -->
+    <div class="mb-5">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-sm font-bold">☑️ 신청 체크리스트</p>
+        <button onclick="runChecklist('${encodeURIComponent(item.pblancNm)}','${encodeURIComponent(item.category||'')}')"
+          class="text-xs px-3 py-1.5 bg-black text-white rounded-full font-medium">자동 생성</button>
+      </div>
+      <div id="ai-checklist" class="text-sm text-gray-400">
+        '자동 생성' 버튼을 누르면 필요 서류 체크리스트를 만들어드려요.
+      </div>
+    </div>
+
+    <!-- 평가 기준 분석 -->
+    <div class="mb-5">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-sm font-bold">📊 평가 기준 분석</p>
+        <button onclick="runEvalCriteria('${encodeURIComponent(item.pblancNm)}','${encodeURIComponent(item.category||'')}')"
+          class="text-xs px-3 py-1.5 bg-black text-white rounded-full font-medium">분석</button>
+      </div>
+      <div id="ai-eval" class="text-sm text-gray-400">
+        평가 항목과 배점 비율을 AI가 추출해드려요.
+      </div>
+    </div>
+
+    <!-- 사업계획서 초안 -->
+    <div class="mb-3">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-sm font-bold">📝 사업계획서 초안</p>
+        <button onclick="runBusinessPlan('${encodeURIComponent(JSON.stringify(item))}')"
+          class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-full font-medium">초안 생성</button>
+      </div>
+      <div id="ai-bizplan" class="text-sm text-gray-400 bg-gray-50 rounded-xl p-4 min-h-[80px]">
+        회사 프로필과 공고를 바탕으로 사업계획서 초안을 작성해드려요.
+      </div>
+    </div>
+  `;
+}
+
+/* ════ AI 호출 (공통) ════ */
+async function callAI(prompt, targetId, placeholder) {
+  const el = document.getElementById(targetId);
+  el.innerHTML = `<div class="flex items-center gap-2 text-gray-400"><div class="w-4 h-4 border-2 border-gray-200 border-t-gray-600 rounded-full spin"></div> AI가 분석 중이에요...</div>`;
+  try {
+    const res = await fetch(AI_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    return data.result || '결과를 가져오지 못했어요.';
+  } catch(e) {
+    /* 네트워크 없을 때 목업 */
+    return placeholder;
+  }
+}
+
+async function runAISummary(name, org, target, category) {
+  name = decodeURIComponent(name); org = decodeURIComponent(org);
+  target = decodeURIComponent(target); category = decodeURIComponent(category);
+  const mock = `• **지원 대상**: 창업 7년 이하 중소·스타트업\n• **지원 내용**: 사업화 자금 및 멘토링 제공 (최대 1억원)\n• **핵심 요건**: AI·디지털 기술 활용 사업, 사업계획서 제출 필수`;
+  const prompt = `다음 정부 지원사업 공고를 내부 팀원이 빠르게 이해할 수 있도록 3줄 bullet로 요약해주세요. 각 줄은 "지원 대상", "지원 내용", "핵심 요건" 기준으로 작성하세요.\n공고명: ${name}\n주관기관: ${org}\n대상: ${target}\n분야: ${category}`;
+  const result = await callAI(prompt, 'ai-summary', mock);
+  document.getElementById('ai-summary').innerHTML = `<div class="prose text-sm text-gray-700">${markdownToHTML(result)}</div>`;
+}
+
+async function runChecklist(name, category) {
+  name = decodeURIComponent(name); category = decodeURIComponent(category);
+  const mock = ['사업계획서 (지정 양식)', '발표자료 (PPT)', '법인등기부등본', '재무제표 (최근 2년)', '사업자등록증', '대표자 신분증 사본', '특허·지재권 증빙 (해당 시)'];
+  const prompt = `다음 정부 지원사업 신청 시 필요한 제출 서류 체크리스트를 만들어주세요. 7-10개 항목, 각 항목은 짧게 작성하세요.\n공고명: ${name}\n분야: ${category}`;
+  const result = await callAI(prompt, 'ai-checklist', mock.join('\n'));
+  const items = result.split('\n').map(l=>l.replace(/^[-•*\d.]+\s*/,'')).filter(Boolean);
+  document.getElementById('ai-checklist').innerHTML = `
+    <div class="space-y-2">
+      ${items.map((it,i)=>`
+        <div class="checklist-item flex items-start gap-2.5">
+          <input type="checkbox" id="chk-${i}" class="mt-0.5 flex-shrink-0 accent-black">
+          <label for="chk-${i}" class="text-sm text-gray-700 cursor-pointer leading-snug">${it}</label>
+        </div>`).join('')}
+    </div>`;
+}
+
+async function runEvalCriteria(name, category) {
+  name = decodeURIComponent(name); category = decodeURIComponent(category);
+  const mock = [
+    { item: '시장성', pct: 30 }, { item: '사업성', pct: 30 },
+    { item: '기술성', pct: 20 }, { item: '팀 역량', pct: 20 }
+  ];
+  const prompt = `다음 정부 지원사업의 평가 기준 항목과 예상 배점 비율을 JSON 배열로만 반환하세요. 형식: [{"item":"항목명","pct":숫자}]. 총합은 100이 되게 하세요.\n공고명: ${name}\n분야: ${category}`;
+  const result = await callAI(prompt, 'ai-eval', JSON.stringify(mock));
+  let items = mock;
+  try { const clean = result.replace(/```json|```/g,'').trim(); items = JSON.parse(clean); } catch{}
+  const colors = ['#10B981','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
+  document.getElementById('ai-eval').innerHTML = `
+    <div class="space-y-2.5">
+      ${items.map((it,i)=>`
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="font-medium text-gray-700">${it.item}</span>
+            <span class="font-bold" style="color:${colors[i%colors.length]}">${it.pct}%</span>
+          </div>
+          <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-2 rounded-full" style="width:${it.pct}%;background:${colors[i%colors.length]};transition:width .8s ease"></div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+async function runBusinessPlan(itemStr) {
+  const item = JSON.parse(decodeURIComponent(itemStr));
+  const p = profile;
+  const mock = `## 사업 개요\n미닝에코는 AI 기반 콘텐츠·행사 운영 플랫폼을 통해 ESG 분야 B2B 시장을 공략합니다.\n\n## 시장 분석\n국내 ESG 관련 기업 행사·교육 시장은 연 2조원 규모로 성장 중이며, 디지털 전환 수요가 급증하고 있습니다.\n\n## 비즈니스 모델\nSaaS 구독 + 프로젝트 단위 운영 수수료 모델로 안정적 매출 구조를 확보합니다.\n\n## 기술력\nLLM 기반 자동화 엔진과 OCR 기술로 행사 운영 효율을 기존 대비 60% 향상시켰습니다.\n\n## 기대 성과\n- 1년 내 고객사 30개 확보\n- 매출 5억원 달성\n- 해외 ESG 시장 진출 기반 마련`;
+  const prompt = `다음 회사 정보와 공고를 바탕으로 정부 지원사업 사업계획서 초안을 작성해주세요.\n\n[회사 정보]\n- 회사명: 미닝에코\n- 사업 분야: ${p.fields?.join(', ')}\n- 주요 기술: ${p.techs?.join(', ')}\n- 창업 연도: ${p.year}\n- 소개: ${p.intro}\n\n[공고 정보]\n- 공고명: ${item.pblancNm}\n- 분야: ${item.category||'지원사업'}\n- 주관: ${item.jrsdInsttNm||''}\n\n목차: 사업 개요 / 시장 분석 / BM / 기술력 / 기대 성과 / 추진 일정. 각 섹션 2-4문장으로 작성하세요.`;
+  const result = await callAI(prompt, 'ai-bizplan', mock);
+  document.getElementById('ai-bizplan').innerHTML = `
+    <div class="prose text-sm text-gray-800">${markdownToHTML(result)}</div>
+    <button onclick="copyText('ai-bizplan')" class="mt-3 w-full py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">📋 복사하기</button>`;
+}
+
+/* ════ 마크다운 → HTML ════ */
+function markdownToHTML(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/^• (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
+    .replace(/<\/ul>\s*<ul>/g, '')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[hul])/gm, '')
+    .replace(/\n/g, '<br>');
+}
+
+function copyText(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard?.writeText(el.innerText).then(()=>toast('복사됐어요!'));
+}
+
+/* ════ 북마크 ════ */
+function toggleBookmark(item) {
+  const idx = bookmarks.findIndex(b => b.pblancNm === item.pblancNm);
+  if (idx >= 0) { bookmarks.splice(idx, 1); toast('북마크를 해제했어요'); }
+  else { bookmarks.push(item); toast('🔖 북마크에 저장했어요'); }
+  saveLocal('me_bookmarks', bookmarks);
+  if (activeTab === '공고') filterData(activeFilter);
+  if (activeTab === '북마크') renderBookmarks();
+  renderDashStats();
+}
+
+function renderBookmarks() {
+  const empty = document.getElementById('bookmark-empty');
+  const cards = document.getElementById('bookmark-cards');
+  if (!bookmarks.length) { empty.classList.remove('hidden'); cards.innerHTML=''; return; }
+  empty.classList.add('hidden');
+  cards.innerHTML = bookmarks.map((item,i) => {
+    const { score } = calcScore(item);
+    const col = scoreColor(score);
+    const dd = dday(item.endDe);
+    return `<div class="bg-white rounded-2xl border border-gray-100 p-4 card-hover fade-up" style="animation-delay:${i*0.04}s">
+      <div class="flex justify-between items-start mb-2">
+        <div class="${col.bg} ${col.border} border rounded-full px-2 py-0.5 flex items-center gap-1">
+          <span class="text-xs font-bold ${col.text}">${score}%</span>
+        </div>
+        <span class="text-xs text-gray-400">${dd||'상시'}</span>
+      </div>
+      <p class="font-bold text-sm mb-2 leading-snug">${item.pblancNm}</p>
+      <div class="flex gap-2">
+        <button onclick='openAnalysis(${JSON.stringify(item).replace(/'/g,"&#39;")})' class="flex-1 py-2 rounded-xl bg-black text-white text-xs font-bold">AI 분석</button>
+        <button onclick='toggleBookmark(${JSON.stringify(item).replace(/'/g,"&#39;")})' class="px-3 py-2 rounded-xl border border-red-100 text-red-400 text-xs">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ════ 비교 ════ */
+function addToCompare(item) {
+  const idx = compareList.findIndex(c => c.pblancNm === item.pblancNm);
+  if (idx >= 0) { compareList.splice(idx, 1); toast('비교 목록에서 제거했어요'); }
+  else if (compareList.length >= 2) { toast('최대 2개까지 비교할 수 있어요'); return; }
+  else { compareList.push(item); toast('⚖️ 비교 목록에 추가했어요'); }
+  saveLocal('me_compare', compareList);
+  if (activeTab === '공고') filterData(activeFilter);
+}
+
+function renderCompare() {
+  const empty = document.getElementById('compare-empty');
+  const panel = document.getElementById('compare-panel');
+  if (compareList.length < 2) { empty.classList.remove('hidden'); panel.classList.add('hidden'); return; }
+  empty.classList.add('hidden'); panel.classList.remove('hidden');
+  const [a, b] = compareList;
+  const sa = calcScore(a), sb = calcScore(b);
+  const rows = [
+    ['분야', a.category||'—', b.category||'—'],
+    ['주관기관', a.jrsdInsttNm||'—', b.jrsdInsttNm||'—'],
+    ['지역', a.region||'전국', b.region||'전국'],
+    ['접수 시작', fmtDate(a.startDe), fmtDate(b.startDe)],
+    ['마감일', fmtDate(a.endDe)||'상시', fmtDate(b.endDe)||'상시'],
+    ['D-Day', dday(a.endDe)||'상시', dday(b.endDe)||'상시'],
+    ['미닝에코 적합도', sa.score+'%', sb.score+'%'],
+  ];
+  panel.innerHTML = `
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div class="grid grid-cols-3 bg-gray-50 text-xs font-bold text-gray-500 p-3 gap-2">
+        <div>항목</div>
+        <div class="truncate text-blue-700">${a.pblancNm.slice(0,20)}…</div>
+        <div class="truncate text-emerald-700">${b.pblancNm.slice(0,20)}…</div>
+      </div>
+      ${rows.map(([label,av,bv])=>`
+        <div class="grid grid-cols-3 px-3 py-2.5 border-t border-gray-50 gap-2 text-xs">
+          <div class="text-gray-400 font-medium">${label}</div>
+          <div class="font-semibold text-gray-800">${av}</div>
+          <div class="font-semibold text-gray-800">${bv}</div>
+        </div>`).join('')}
+      <div class="grid grid-cols-3 px-3 py-3 border-t border-gray-100 gap-2">
+        <div class="text-xs text-gray-400 font-bold self-center">추천</div>
+        <div class="text-center">
+          ${sa.score >= sb.score ? '<span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">✓ 더 적합</span>' : ''}
+        </div>
+        <div class="text-center">
+          ${sb.score > sa.score ? '<span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">✓ 더 적합</span>' : ''}
+        </div>
+      </div>
+    </div>
+    <button onclick="compareList=[];saveLocal('me_compare',compareList);renderCompare();" class="w-full mt-3 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-400">비교 초기화</button>`;
+}
+
+/* ════ 대시보드 ════ */
+function renderDashboard() {
+  renderDashStats();
+  const sorted = [...allData].sort((a,b)=>calcScore(b).score-calcScore(a).score);
+  const top5 = sorted.slice(0,5);
+  document.getElementById('dash-top5').innerHTML = top5.map((item,i)=>{
+    const {score} = calcScore(item);
+    const col = scoreColor(score);
+    return `<div class="flex items-center gap-3 cursor-pointer hover:bg-gray-50 rounded-xl p-2 -mx-2" onclick='openAnalysis(${JSON.stringify(item).replace(/'/g,"&#39;")})'>
+      <span class="text-sm font-bold text-gray-400 w-4">${i+1}</span>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-semibold text-gray-800 leading-snug truncate">${item.pblancNm}</p>
+        <p class="text-xs text-gray-400">${item.jrsdInsttNm||''}</p>
+      </div>
+      <span class="text-sm font-extrabold ${col.text} flex-shrink-0">${score}%</span>
+    </div>`;
+  }).join('');
+  const urgent = allData.filter(d=>{ const dd=dday(d.endDe); return dd&&dd.startsWith('D-')&&parseInt(dd.slice(2))<=7; });
+  document.getElementById('dash-urgent-list').innerHTML = urgent.slice(0,5).map(item=>{
+    const dd = dday(item.endDe);
+    return `<div class="flex items-center gap-2.5">
+      <span class="text-xs font-bold text-red-500 flex-shrink-0 w-16">${dd}</span>
+      <p class="text-xs text-gray-700 truncate">${item.pblancNm}</p>
+    </div>`;
+  }).join('') || '<p class="text-xs text-gray-400">마감 임박 공고가 없어요</p>';
+}
+function renderDashStats() {
+  document.getElementById('dash-total').textContent = allData.length;
+  document.getElementById('dash-high').textContent = allData.filter(d=>calcScore(d).score>=80).length;
+  document.getElementById('dash-bookmarks').textContent = bookmarks.length;
+  document.getElementById('dash-urgent').textContent = allData.filter(d=>{const dd=dday(d.endDe);return dd&&dd.startsWith('D-')&&parseInt(dd.slice(2))<=7;}).length;
+}
+
+/* ════ 프로필 ════ */
+const ALL_FIELDS = ['AI', '콘텐츠', '행사 운영', 'ESG', '창업', '교육', '서비스 운영', 'B2B', '소셜벤처', '스마트팜'];
+const ALL_TECHS  = ['LLM', 'OCR', '운영 플랫폼', 'Computer Vision', 'NLP', '모바일 앱', 'SaaS', 'API'];
+
+function renderProfile() {
+  const fieldEl = document.getElementById('field-tags');
+  const techEl  = document.getElementById('tech-tags');
+  fieldEl.innerHTML = ALL_FIELDS.map(f=>`
+    <button onclick="toggleTag('field','${f}',this)"
+      class="px-3 py-1.5 text-xs rounded-full border transition-all font-medium ${profile.fields?.includes(f)?'bg-black text-white border-black':'bg-white text-gray-500 border-gray-200'}">${f}</button>`).join('');
+  techEl.innerHTML = ALL_TECHS.map(t=>`
+    <button onclick="toggleTag('tech','${t}',this)"
+      class="px-3 py-1.5 text-xs rounded-full border transition-all font-medium ${profile.techs?.includes(t)?'bg-black text-white border-black':'bg-white text-gray-500 border-gray-200'}">${t}</button>`).join('');
+  document.getElementById('profile-year').value = profile.year || 2022;
+  document.getElementById('profile-intro').value = profile.intro || '';
+}
+function toggleTag(type, val, btn) {
+  const key = type === 'field' ? 'fields' : 'techs';
+  if (!profile[key]) profile[key] = [];
+  const idx = profile[key].indexOf(val);
+  if (idx >= 0) { profile[key].splice(idx,1); btn.className=btn.className.replace('bg-black text-white border-black','bg-white text-gray-500 border-gray-200'); }
+  else { profile[key].push(val); btn.className=btn.className.replace('bg-white text-gray-500 border-gray-200','bg-black text-white border-black'); }
+}
+function saveProfile() {
+  profile.year  = parseInt(document.getElementById('profile-year').value);
+  profile.intro = document.getElementById('profile-intro').value;
+  saveLocal('me_profile', profile);
+  toast('✅ 프로필이 저장됐어요');
+}
+
+/* ════ 드로어 ════ */
+function openDrawer(title, eyebrow) {
+  document.getElementById('drawer-title').textContent  = title;
+  document.getElementById('drawer-eyebrow').textContent = eyebrow || '';
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+/* ════ 데이터 로드 ════ */
 async function loadData() {
   try {
     const res  = await fetch(`${PROXY}?pageNo=1&numOfRows=50`);
     const json = await res.json();
-    allData = (json.items || []).filter(d => {
-      if (!d.endDe) return true; // 마감일 없으면 상시모집으로 표시
-      return dday(d.endDe) !== null; // 마감일 지난 건 제외
-    });
+    allData = (json.items || []).filter(d => !d.endDe || dday(d.endDe) !== null);
     renderCards(allData);
-  } catch (e) {
-    console.error(e);
-    document.getElementById('status').textContent =
-      '데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.';
+    renderDashStats();
+  } catch(e) {
+    /* 오프라인/로컬 테스트용 목업 */
+    allData = [
+      { pblancNm:'2025 AI 스타트업 사업화 지원', jrsdInsttNm:'중소벤처기업부', category:'창업', region:'전국', startDe:'20250701', endDe:'20250830', pblancUrl:'#', target:'AI 기술 보유 창업 7년 이하 기업' },
+      { pblancNm:'ESG 콘텐츠 제작 지원사업', jrsdInsttNm:'한국사회적기업진흥원', category:'콘텐츠', region:'서울', startDe:'20250715', endDe:'20250810', pblancUrl:'#', target:'소셜벤처 콘텐츠 제작 기업' },
+      { pblancNm:'글로벌 액셀러레이터 매칭', jrsdInsttNm:'창업진흥원', category:'글로벌', region:'전국', startDe:'20250720', endDe:'20250815', pblancUrl:'#', target:'해외 진출 희망 스타트업' },
+      { pblancNm:'행사 운영 디지털화 멘토링', jrsdInsttNm:'중소기업진흥공단', category:'멘토링', region:'경기', startDe:'20250710', endDe:'20250720', pblancUrl:'#', target:'행사·이벤트 운영 기업' },
+      { pblancNm:'스마트 교육 콘텐츠 사업화', jrsdInsttNm:'교육부', category:'교육', region:'전국', startDe:'20250801', endDe:'20250901', pblancUrl:'#', target:'에듀테크 스타트업' },
+    ];
+    renderCards(allData);
+    renderDashStats();
+    toast('⚠️ 데모 데이터로 표시 중 (API 연결 필요)');
   }
 }
 
