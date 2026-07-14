@@ -155,49 +155,178 @@ pre{white-space:pre-wrap;word-break:break-word;}
 
   <!-- 프로필 탭 -->
   <div id="pane-프로필" class="hidden">
-    <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-4">
-      <p class="text-sm font-bold mb-4">🏢 미닝에코 프로필</p>
-      <div class="space-y-4">
-        <div>
-          <label class="text-xs font-semibold text-gray-500 block mb-1.5">사업 분야 <span class="font-normal text-gray-400">(선택 · 커스텀 추가 가능)</span></label>
-          <div class="flex flex-wrap gap-2 mb-2" id="field-tags"></div>
-          <div class="flex gap-2 mt-1">
-            <input id="field-input" type="text" placeholder="직접 입력 후 Enter"
-              class="flex-1 border border-dashed border-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-gray-400 bg-gray-50"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTag('field')}"
-            />
-            <button onclick="addCustomTag('field')" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white text-xs font-bold">추가</button>
+
+    <!-- 완성도 배너 -->
+    <div class="bg-gray-900 rounded-2xl p-4 mb-4 flex items-center gap-3">
+      <div class="flex-1">
+        <p class="text-xs text-gray-400 mb-1">프로필 완성도</p>
+        <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+          <div id="profile-progress-bar" class="h-2 bg-emerald-400 rounded-full transition-all duration-500" style="width:0%"></div>
+        </div>
+      </div>
+      <span id="profile-progress-text" class="text-lg font-extrabold text-emerald-400">0%</span>
+    </div>
+
+    <div class="space-y-3">
+
+    <!-- 섹션 1: 회사 기본 정보 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-4">🏢 1. 회사 기본 정보</p>
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-gray-500 block mb-1.5">회사명</label>
+            <input id="p-company" type="text" placeholder="미닝에코" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400"/>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-500 block mb-1.5">대표자</label>
+            <input id="p-ceo" type="text" placeholder="홍길동" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400"/>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-gray-500 block mb-1.5">설립연도</label>
+            <select id="p-year" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none">
+              <option value="">선택</option>
+              ${Array.from({length:15},(_,i)=>2025-i).map(y=>`<option value="${y}">${y}년</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-500 block mb-1.5">사업자 형태</label>
+            <select id="p-biztype" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none">
+              <option value="">선택</option>
+              <option value="법인">법인</option>
+              <option value="개인">개인</option>
+            </select>
           </div>
         </div>
         <div>
-          <label class="text-xs font-semibold text-gray-500 block mb-1.5">주요 기술 <span class="font-normal text-gray-400">(커스텀 추가 가능)</span></label>
-          <div class="flex flex-wrap gap-2 mb-2" id="tech-tags"></div>
-          <div class="flex gap-2 mt-1">
-            <input id="tech-input" type="text" placeholder="직접 입력 후 Enter"
-              class="flex-1 border border-dashed border-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-gray-400 bg-gray-50"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTag('tech')}"
-            />
-            <button onclick="addCustomTag('tech')" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white text-xs font-bold">추가</button>
-          </div>
+          <label class="text-xs font-semibold text-gray-500 block mb-1.5">본사 소재지</label>
+          <input id="p-location" type="text" placeholder="서울특별시 성동구" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400"/>
         </div>
-        <div>
-          <label class="text-xs font-semibold text-gray-500 block mb-2">창업 연도</label>
-          <select id="profile-year" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none">
-            <option value="2020">2020년</option>
-            <option value="2021">2021년</option>
-            <option value="2022" selected>2022년</option>
-            <option value="2023">2023년</option>
-            <option value="2024">2024년</option>
-          </select>
+        <!-- 기업연차 자동 계산 표시 -->
+        <div id="p-age-badge" class="hidden bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 flex items-center gap-2">
+          <span class="text-emerald-600 text-xs font-bold" id="p-age-text"></span>
+          <span class="text-emerald-500 text-xs" id="p-age-qualify"></span>
         </div>
-        <div>
-          <label class="text-xs font-semibold text-gray-500 block mb-2">회사 소개 (사업계획서 생성에 활용)</label>
-          <textarea id="profile-intro" rows="4" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none resize-none" placeholder="미닝에코는 AI 기반 콘텐츠·행사 운영 스타트업으로, ESG 분야 B2B 서비스를 제공합니다..."></textarea>
-        </div>
-        <button onclick="saveProfile()" class="w-full py-3 bg-black text-white rounded-xl text-sm font-bold">저장하기</button>
       </div>
     </div>
-    <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
+
+    <!-- 섹션 2: 회사 소개 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-1">📝 2. 회사 소개</p>
+      <p class="text-xs text-gray-400 mb-3">기업 개요·소개·사업계획서 초안에 활용됩니다 (500~1000자 권장)</p>
+      <textarea id="p-intro" rows="5" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none resize-none focus:border-gray-400" placeholder="우리 회사는 어떤 문제를 해결하는 회사인지, 주요 서비스·기술·고객은 누구인지 자유롭게 작성해주세요."></textarea>
+      <p class="text-xs text-gray-300 mt-1 text-right" id="p-intro-count">0자</p>
+    </div>
+
+    <!-- 섹션 3: 핵심 사업 분야 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-1">🎯 3. 핵심 사업 분야</p>
+      <p class="text-xs text-gray-400 mb-3">적합도 계산에 활용됩니다</p>
+      <div class="flex flex-wrap gap-2 mb-2" id="field-tags"></div>
+      <div class="flex gap-2 mt-2">
+        <input id="field-input" type="text" placeholder="직접 입력 후 Enter"
+          class="flex-1 border border-dashed border-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-gray-400 bg-gray-50"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTag('field')}"/>
+        <button onclick="addCustomTag('field')" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white text-xs font-bold">추가</button>
+      </div>
+    </div>
+
+    <!-- 섹션 4: 핵심 기술 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-1">⚙️ 4. 핵심 기술</p>
+      <p class="text-xs text-gray-400 mb-3">적합도 계산 및 사업계획서 기술 경쟁력 작성에 활용됩니다</p>
+      <div class="flex flex-wrap gap-2 mb-2" id="tech-tags"></div>
+      <div class="flex gap-2 mt-2">
+        <input id="tech-input" type="text" placeholder="직접 입력 후 Enter"
+          class="flex-1 border border-dashed border-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-gray-400 bg-gray-50"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTag('tech')}"/>
+        <button onclick="addCustomTag('tech')" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white text-xs font-bold">추가</button>
+      </div>
+    </div>
+
+    <!-- 섹션 5: 대표 서비스/프로젝트 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-1">🚀 5. 대표 서비스 / 프로젝트</p>
+      <p class="text-xs text-gray-400 mb-3">기업 역량·사업 수행 경험 작성에 활용됩니다</p>
+      <div id="services-list" class="space-y-2 mb-2"></div>
+      <div class="flex gap-2">
+        <input id="service-input" type="text" placeholder="예: 디지털 교육 플랫폼"
+          class="flex-1 border border-dashed border-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-gray-400 bg-gray-50"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addListItem('services','service-input')}"/>
+        <button onclick="addListItem('services','service-input')" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white text-xs font-bold">추가</button>
+      </div>
+    </div>
+
+    <!-- 섹션 6: 주요 실적 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-1">🏆 6. 주요 실적</p>
+      <p class="text-xs text-gray-400 mb-3">기업 경쟁력·사업 수행 능력 작성에 활용됩니다</p>
+      <div id="achievements-list" class="space-y-2 mb-2"></div>
+      <div class="flex gap-2">
+        <input id="achievement-input" type="text" placeholder="예: 공공기관 협업 10건"
+          class="flex-1 border border-dashed border-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-gray-400 bg-gray-50"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addListItem('achievements','achievement-input')}"/>
+        <button onclick="addListItem('achievements','achievement-input')" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white text-xs font-bold">추가</button>
+      </div>
+    </div>
+
+    <!-- 섹션 7: 차별성 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-1">💡 7. 우리 회사의 차별성</p>
+      <p class="text-xs text-gray-400 mb-3">우리 회사만이 가지고 있는 경쟁력은 무엇입니까?</p>
+      <textarea id="p-differentiation" rows="3" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none resize-none focus:border-gray-400" placeholder="예: AI 기반 자동화 역량, 특정 산업 전문성, 데이터 분석 역량..."></textarea>
+    </div>
+
+    <!-- 섹션 8: 해결하려는 문제 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-1">🔍 8. 해결하려는 문제</p>
+      <p class="text-xs text-gray-400 mb-3">우리 회사가 해결하려는 문제는 무엇입니까?</p>
+      <textarea id="p-problem" rows="3" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none resize-none focus:border-gray-400" placeholder="예: 행정 업무 비효율, 데이터 관리 문제, 운영 비용 증가..."></textarea>
+    </div>
+
+    <!-- 섹션 9: 올해 목표 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-1">📅 9. 올해 목표</p>
+      <div id="goals-list" class="space-y-2 mb-2"></div>
+      <div class="flex gap-2">
+        <input id="goal-input" type="text" placeholder="예: 신규 고객 20개사 확보"
+          class="flex-1 border border-dashed border-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-gray-400 bg-gray-50"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addListItem('goals','goal-input')}"/>
+        <button onclick="addListItem('goals','goal-input')" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white text-xs font-bold">추가</button>
+      </div>
+    </div>
+
+    <!-- 섹션 10: 필요한 지원 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-1">🙋 10. 필요한 지원</p>
+      <p class="text-xs text-gray-400 mb-3">공고와 자동 매칭하여 적합도 계산에 활용됩니다</p>
+      <div class="flex flex-wrap gap-2" id="support-checks">
+        ${['개발비','인건비','마케팅','장비','시제품 제작','PoC','해외진출','R&D'].map(v=>`
+        <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 cursor-pointer text-xs text-gray-600 support-check-label">
+          <input type="checkbox" value="${v}" class="support-chk accent-black" onchange="updateCheckGroup('support')"> ${v}
+        </label>`).join('')}
+      </div>
+    </div>
+
+    <!-- 섹션 11: 보유 자산 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <p class="text-sm font-bold mb-3">🗂 11. 보유 자산</p>
+      <div class="flex flex-wrap gap-2" id="asset-checks">
+        ${['특허','상표','SW 등록','저작권','인증','투자유치','정부지원사업 수행 경험'].map(v=>`
+        <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 cursor-pointer text-xs text-gray-600 asset-check-label">
+          <input type="checkbox" value="${v}" class="asset-chk accent-black" onchange="updateCheckGroup('asset')"> ${v}
+        </label>`).join('')}
+      </div>
+    </div>
+
+    </div><!-- /space-y-3 -->
+
+    <div class="mt-4 mb-2">
+      <button onclick="saveProfile()" class="w-full py-3.5 bg-black text-white rounded-2xl text-sm font-bold">✅ 프로필 저장하기</button>
+    </div>
+    <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 mb-4">
       <p class="text-xs font-bold text-emerald-700 mb-1">💡 프로필이 정확할수록</p>
       <p class="text-xs text-emerald-600">적합도 분석과 사업계획서 초안의 품질이 높아져요.</p>
     </div>
@@ -216,22 +345,34 @@ const BIZ2_PROXY  = '/api/bizinfo2';     /* 기업마당 */
 const AI_PROXY    = '/api/ai';
 
 const COMPANY_PROFILE = {
-  fields:    ['AI', '콘텐츠', '행사 운영', 'ESG', '창업', '교육', '서비스 운영'],
+  /* 섹션 1: 기본 정보 */
+  company:  '',
+  ceo:      '',
+  year:     2022,
+  biztype:  '',
+  location: '',
+  /* 섹션 2: 회사 소개 */
+  intro: '',
+  /* 섹션 3·4: 사업 분야 / 기술 (버블 태그) */
+  fields:    ['AI', '콘텐츠', '행사 운영', 'ESG'],
   techs:     ['LLM', 'OCR', '운영 플랫폼'],
-  fieldPool: ['AI', '콘텐츠', '행사 운영', 'ESG', '창업', '교육', '서비스 운영', 'B2B', '소셜벤처'],
-  techPool:  ['LLM', 'OCR', '운영 플랫폼', 'Computer Vision', 'NLP', '모바일 앱', 'SaaS', 'API'],
-  year:      2022,
-  intro:     '미닝에코는 AI 기반 콘텐츠·행사 운영 스타트업으로, ESG 분야 B2B 서비스를 제공합니다. LLM과 OCR 기반 솔루션으로 기업 교육 및 행사 운영 자동화를 지원합니다.',
+  fieldPool: ['AI', '플랫폼', '교육', '콘텐츠', 'ESG', '제조', '관광', '환경', '디지털전환', '행사 운영', 'B2B', '소셜벤처'],
+  techPool:  ['데이터 분석', '컴퓨터비전', '자동화', 'SaaS', 'IoT', 'LLM', 'OCR', '운영 플랫폼', 'NLP', '모바일 앱', 'API'],
+  /* 섹션 5·6·9: 복수 입력 목록 */
+  services:     [],
+  achievements: [],
+  goals:        [],
+  /* 섹션 7·8: 서술형 */
+  differentiation: '',
+  problem:         '',
+  /* 섹션 10·11: 체크박스 */
+  support: [],
+  assets:  [],
 };
 
-const SCORE_WEIGHTS = [
-  { key: 'AI',       pts: 20, label: 'AI 기술 관련' },
-  { key: '행사',     pts: 20, label: '행사 운영' },
-  { key: '콘텐츠',  pts: 20, label: '콘텐츠 제작' },
-  { key: 'ESG',     pts: 15, label: 'ESG 분야' },
-  { key: '교육',    pts: 10, label: '교육·멘토링' },
-  { key: '창업',    pts: 10, label: '창업 기업 대상' },
-  { key: '전국',    pts:  5, label: '전국 모집' },
+/* 고정 키워드 가중치 (공고 텍스트 매칭용) */
+const BASE_SCORE_WEIGHTS = [
+  { key: '전국', pts: 5, label: '전국 모집' },
 ];
 
 /* ════ 전역 상태 ════ */
@@ -262,16 +403,62 @@ function toast(msg) {
 }
 function saveLocal(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-/* ════ 적합도 계산 ════ */
+/* ════ 적합도 계산 (v2.0) ════ */
 function calcScore(item) {
-  const text = [item.pblancNm, item.category, item.excInsttNm, item.target, item.region].join(' ');
-  let total = 0; const matched = [];
-  for (const w of SCORE_WEIGHTS) {
+  const text = [item.pblancNm, item.category, item.excInsttNm, item.target, item.region, item.source].join(' ');
+  let total = 0;
+  const matched = [];
+
+  /* 1) 고정 키워드 */
+  for (const w of BASE_SCORE_WEIGHTS) {
     if (text.includes(w.key)) { total += w.pts; matched.push(w); }
   }
-  // 창업 연도 계산
-  const age = new Date().getFullYear() - profile.year;
-  if (age <= 7) { total += 10; matched.push({ pts: 10, label: `창업 ${age}년 (7년 이하)` }); }
+
+  /* 2) 사업 분야 매칭 (최대 30pt) */
+  const fields = profile.fields || [];
+  const matchedFields = fields.filter(f => text.includes(f));
+  if (matchedFields.length) {
+    const pts = Math.min(30, matchedFields.length * 10);
+    total += pts;
+    matched.push({ pts, label: `사업 분야 일치: ${matchedFields.slice(0,3).join(', ')}` });
+  }
+
+  /* 3) 핵심 기술 매칭 (최대 20pt) */
+  const techs = profile.techs || [];
+  const matchedTechs = techs.filter(t => text.includes(t));
+  if (matchedTechs.length) {
+    const pts = Math.min(20, matchedTechs.length * 7);
+    total += pts;
+    matched.push({ pts, label: `기술 일치: ${matchedTechs.slice(0,3).join(', ')}` });
+  }
+
+  /* 4) 필요한 지원 매칭 (최대 15pt) */
+  const support = profile.support || [];
+  const supportKeyMap = { '개발비':'개발', '인건비':'인건', '마케팅':'마케팅', '장비':'장비',
+    '시제품 제작':'시제품', 'PoC':'PoC', '해외진출':'해외', 'R&D':'R&D' };
+  const matchedSupport = support.filter(s => text.includes(supportKeyMap[s] || s));
+  if (matchedSupport.length) {
+    const pts = Math.min(15, matchedSupport.length * 5);
+    total += pts;
+    matched.push({ pts, label: `지원 유형 일치: ${matchedSupport.join(', ')}` });
+  }
+
+  /* 5) 보유 자산 보너스 (최대 10pt) */
+  const assets = profile.assets || [];
+  if (assets.includes('특허') || assets.includes('SW 등록')) {
+    total += 5; matched.push({ pts: 5, label: '지재권 보유' });
+  }
+  if (assets.includes('정부지원사업 수행 경험')) {
+    total += 5; matched.push({ pts: 5, label: '정부사업 수행 경험' });
+  }
+
+  /* 6) 기업연차 자격 판별 (최대 15pt) */
+  const age = new Date().getFullYear() - (profile.year || 2022);
+  const ageText = item.target + ' ' + item.pblancNm;
+  if (age <= 3 && ageText.includes('3년')) { total += 15; matched.push({ pts: 15, label: `창업 ${age}년 (3년 이내 우대)` }); }
+  else if (age <= 7 && ageText.includes('7년')) { total += 10; matched.push({ pts: 10, label: `창업 ${age}년 (7년 이내 대상)` }); }
+  else if (age <= 10) { total += 5; matched.push({ pts: 5, label: `창업 ${age}년 차` }); }
+
   return { score: Math.min(100, total), matched };
 }
 
@@ -417,13 +604,25 @@ async function openAnalysis(item) {
 
     <!-- 추천 이유 -->
     <div class="mb-5">
-      <p class="text-sm font-bold mb-2">✅ 추천 이유</p>
+      <p class="text-sm font-bold mb-2">✅ 적합도 근거</p>
       ${matched.length ? `<div class="space-y-1.5">
         ${matched.map(m=>`<div class="flex items-center gap-2 text-sm">
           <span class="w-8 text-xs font-bold text-emerald-600 text-right">+${m.pts}</span>
           <span class="text-gray-700">${m.label}</span>
         </div>`).join('')}
       </div>` : '<p class="text-xs text-gray-400">매칭 항목이 없어요</p>'}
+    </div>
+
+    <!-- 신청 자격 검증 -->
+    <div class="mb-5">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-sm font-bold">🔎 신청 자격 검증</p>
+        <button onclick="runEligibility('${encodeURIComponent(item.pblancNm)}','${encodeURIComponent(item.target||'')}','${encodeURIComponent(item.category||'')}')"
+          class="text-xs px-3 py-1.5 bg-black text-white rounded-full font-medium">자격 확인</button>
+      </div>
+      <div id="ai-eligibility" class="bg-gray-50 rounded-xl p-4 text-sm text-gray-400 min-h-[60px]">
+        '자격 확인' 버튼을 누르면 우리 회사 프로필 기준으로 신청 가능 여부를 판단해드려요.
+      </div>
     </div>
 
     <!-- AI 요약 -->
@@ -545,11 +744,24 @@ async function runEvalCriteria(name, category) {
     </div>`;
 }
 
+async function runEligibility(name, target, category) {
+  name     = decodeURIComponent(name);
+  target   = decodeURIComponent(target);
+  category = decodeURIComponent(category);
+  const p  = profile;
+  const age = new Date().getFullYear() - (p.year || 2022);
+  const mock = `✅ **신청 가능** — 창업 ${age}년 기업으로 일반적인 자격 요건을 충족합니다.\n\n확인 필요 항목:\n- 사업자등록증 업종 코드가 공고 대상 업종에 해당하는지 확인\n- 정부지원사업 중복 수혜 제한 여부 확인`;
+  const prompt = `다음 공고의 신청 자격 요건을 분석하고, 아래 회사 정보 기준으로 신청 가능 여부를 판단해주세요. "신청 가능 / 조건부 가능 / 어려움" 중 하나로 먼저 명시한 뒤, 근거와 확인 필요 사항을 간결하게 작성하세요.\n\n[공고]\n- 공고명: ${name}\n- 대상: ${target}\n- 분야: ${category}\n\n[회사 정보]\n- 기업연차: ${age}년\n- 사업자 형태: ${p.biztype||'미입력'}\n- 사업 분야: ${(p.fields||[]).join(', ')}\n- 보유 자산: ${(p.assets||[]).join(', ')||'없음'}\n- 필요 지원: ${(p.support||[]).join(', ')||'없음'}`;
+  const result = await callAI(prompt, 'ai-eligibility', mock);
+  document.getElementById('ai-eligibility').innerHTML = `<div class="prose text-sm text-gray-700">${markdownToHTML(result)}</div>`;
+}
+
 async function runBusinessPlan(itemStr) {
   const item = JSON.parse(decodeURIComponent(itemStr));
-  const p = profile;
-  const mock = `## 사업 개요\n미닝에코는 AI 기반 콘텐츠·행사 운영 플랫폼을 통해 ESG 분야 B2B 시장을 공략합니다.\n\n## 시장 분석\n국내 ESG 관련 기업 행사·교육 시장은 연 2조원 규모로 성장 중이며, 디지털 전환 수요가 급증하고 있습니다.\n\n## 비즈니스 모델\nSaaS 구독 + 프로젝트 단위 운영 수수료 모델로 안정적 매출 구조를 확보합니다.\n\n## 기술력\nLLM 기반 자동화 엔진과 OCR 기술로 행사 운영 효율을 기존 대비 60% 향상시켰습니다.\n\n## 기대 성과\n- 1년 내 고객사 30개 확보\n- 매출 5억원 달성\n- 해외 ESG 시장 진출 기반 마련`;
-  const prompt = `다음 회사 정보와 공고를 바탕으로 정부 지원사업 사업계획서 초안을 작성해주세요.\n\n[회사 정보]\n- 회사명: 미닝에코\n- 사업 분야: ${p.fields?.join(', ')}\n- 주요 기술: ${p.techs?.join(', ')}\n- 창업 연도: ${p.year}\n- 소개: ${p.intro}\n\n[공고 정보]\n- 공고명: ${item.pblancNm}\n- 분야: ${item.category||'지원사업'}\n- 주관: ${item.jrsdInsttNm||''}\n\n목차: 사업 개요 / 시장 분석 / BM / 기술력 / 기대 성과 / 추진 일정. 각 섹션 2-4문장으로 작성하세요.`;
+  const p    = profile;
+  const age  = new Date().getFullYear() - (p.year || 2022);
+  const mock = `## 사업 개요\n${p.company||'당사'}는 ${(p.fields||[]).join(', ')} 분야에서 혁신적인 솔루션을 제공합니다.\n\n## 문제 정의\n${p.problem||'시장 내 비효율과 디지털 전환 수요 증가에 대응합니다.'}\n\n## 기술 경쟁력\n${(p.techs||[]).join(', ')} 기술을 보유하고 있으며, ${p.differentiation||'차별화된 역량'}을 갖추고 있습니다.\n\n## 사업 수행 역량\n${(p.achievements||[]).join(', ')||'다수의 프로젝트 수행 경험을 보유하고 있습니다.'}\n\n## 기대 성과\n${(p.goals||['서비스 고도화', '신규 고객 확보']).join(' / ')}`;
+  const prompt = `다음 회사 정보와 공고를 바탕으로 정부 지원사업 사업계획서 초안을 작성해주세요.\n\n[회사 정보]\n- 회사명: ${p.company||'당사'}\n- 대표자: ${p.ceo||'대표'}\n- 기업연차: ${age}년 (${p.year}년 설립)\n- 사업자 형태: ${p.biztype||''}\n- 소재지: ${p.location||''}\n- 사업 분야: ${(p.fields||[]).join(', ')}\n- 핵심 기술: ${(p.techs||[]).join(', ')}\n- 대표 서비스: ${(p.services||[]).join(', ')||'없음'}\n- 주요 실적: ${(p.achievements||[]).join(', ')||'없음'}\n- 차별성: ${p.differentiation||''}\n- 해결 문제: ${p.problem||''}\n- 올해 목표: ${(p.goals||[]).join(', ')||''}\n- 보유 자산: ${(p.assets||[]).join(', ')||''}\n- 필요 지원: ${(p.support||[]).join(', ')||''}\n- 회사 소개: ${p.intro||''}\n\n[공고 정보]\n- 공고명: ${item.pblancNm}\n- 분야: ${item.category||'지원사업'}\n- 주관: ${item.jrsdInsttNm||''}\n\n목차: 사업 개요 / 문제 정의 및 필요성 / 기술 경쟁력 / 사업 수행 역량 / 기대 성과 / 추진 일정. 각 섹션 3-5문장, 구체적 수치와 근거를 포함하세요.`;
   const result = await callAI(prompt, 'ai-bizplan', mock);
   document.getElementById('ai-bizplan').innerHTML = `
     <div class="prose text-sm text-gray-800">${markdownToHTML(result)}</div>
@@ -697,9 +909,8 @@ function renderDashStats() {
 }
 
 /* ════ 프로필 ════ */
-// 기본 제안 목록 (참고용 — 실제 활성 목록은 profile.fieldPool / profile.techPool)
-const DEFAULT_FIELD_POOL = ['AI', '콘텐츠', '행사 운영', 'ESG', '창업', '교육', '서비스 운영', 'B2B', '소셜벤처'];
-const DEFAULT_TECH_POOL  = ['LLM', 'OCR', '운영 플랫폼', 'Computer Vision', 'NLP', '모바일 앱', 'SaaS', 'API'];
+const DEFAULT_FIELD_POOL = ['AI', '플랫폼', '교육', '콘텐츠', 'ESG', '제조', '관광', '환경', '디지털전환', '행사 운영', 'B2B', '소셜벤처'];
+const DEFAULT_TECH_POOL  = ['데이터 분석', '컴퓨터비전', '자동화', 'SaaS', 'IoT', 'LLM', 'OCR', '운영 플랫폼', 'NLP', '모바일 앱', 'API'];
 
 /** 현재 profile 풀(pool)을 보장하고 반환 */
 function getPool(type) {
@@ -710,10 +921,144 @@ function getPool(type) {
 }
 
 function renderProfile() {
+  /* 섹션 1 */
+  document.getElementById('p-company').value  = profile.company  || '';
+  document.getElementById('p-ceo').value      = profile.ceo      || '';
+  document.getElementById('p-year').value     = profile.year     || '';
+  document.getElementById('p-biztype').value  = profile.biztype  || '';
+  document.getElementById('p-location').value = profile.location || '';
+  updateAgeBadge();
+
+  /* 섹션 2 */
+  const introEl = document.getElementById('p-intro');
+  introEl.value = profile.intro || '';
+  document.getElementById('p-intro-count').textContent = introEl.value.length + '자';
+  introEl.addEventListener('input', () => {
+    document.getElementById('p-intro-count').textContent = introEl.value.length + '자';
+  });
+
+  /* 섹션 3·4 버블 태그 */
   renderTagArea('field');
   renderTagArea('tech');
-  document.getElementById('profile-year').value = profile.year || 2022;
-  document.getElementById('profile-intro').value = profile.intro || '';
+
+  /* 섹션 5·6·9 복수 목록 */
+  renderListItems('services');
+  renderListItems('achievements');
+  renderListItems('goals');
+
+  /* 섹션 7·8 */
+  document.getElementById('p-differentiation').value = profile.differentiation || '';
+  document.getElementById('p-problem').value         = profile.problem         || '';
+
+  /* 섹션 10·11 체크박스 */
+  restoreCheckGroup('support', '.support-chk', '.support-check-label');
+  restoreCheckGroup('asset',   '.asset-chk',   '.asset-check-label');
+
+  updateProfileProgress();
+}
+
+/* 기업연차 뱃지 업데이트 */
+function updateAgeBadge() {
+  const yearEl = document.getElementById('p-year');
+  const badge  = document.getElementById('p-age-badge');
+  const ageText   = document.getElementById('p-age-text');
+  const ageQual   = document.getElementById('p-age-qualify');
+  const yr = parseInt(yearEl.value);
+  if (!yr) { badge.classList.add('hidden'); return; }
+  const age = new Date().getFullYear() - yr;
+  badge.classList.remove('hidden');
+  ageText.textContent = `기업연차 ${age}년`;
+  const quals = [];
+  if (age <= 3)  quals.push('창업 3년 이내');
+  if (age <= 7)  quals.push('7년 이내');
+  if (age <= 10) quals.push('10년 이내');
+  ageQual.textContent = quals.length ? '✓ ' + quals.join(' · ') + ' 공고 자격 해당' : '창업 10년 초과';
+}
+document.addEventListener('change', e => { if (e.target.id === 'p-year') updateAgeBadge(); });
+
+/* 복수 목록 렌더링 */
+function renderListItems(key) {
+  const inputMap = { services: 'service-input', achievements: 'achievement-input', goals: 'goal-input' };
+  const el = document.getElementById(`${key}-list`);
+  const items = profile[key] || [];
+  el.innerHTML = items.map((v, i) => `
+    <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+      <span class="flex-1 text-xs text-gray-700">${escH(v)}</span>
+      <button onclick="removeListItem('${key}',${i})" class="text-gray-300 hover:text-red-400 text-sm leading-none">✕</button>
+    </div>`).join('');
+}
+
+function addListItem(key, inputId) {
+  const el  = document.getElementById(inputId);
+  const val = el.value.trim();
+  if (!val) return;
+  if (!profile[key]) profile[key] = [];
+  profile[key].push(val);
+  el.value = '';
+  renderListItems(key);
+  updateProfileProgress();
+}
+
+function removeListItem(key, idx) {
+  profile[key].splice(idx, 1);
+  renderListItems(key);
+  updateProfileProgress();
+}
+
+/* 체크박스 그룹 복원 */
+function restoreCheckGroup(key, chkSel, labelSel) {
+  const saved = profile[key === 'support' ? 'support' : 'assets'] || [];
+  document.querySelectorAll(chkSel).forEach(chk => {
+    chk.checked = saved.includes(chk.value);
+    const label = chk.closest('label');
+    if (label) label.classList.toggle('bg-gray-900', chk.checked);
+    if (label) label.classList.toggle('text-white',  chk.checked);
+    if (label) label.classList.toggle('border-gray-900', chk.checked);
+  });
+}
+
+function updateCheckGroup(type) {
+  const isSupport = type === 'support';
+  const sel   = isSupport ? '.support-chk' : '.asset-chk';
+  const pKey  = isSupport ? 'support' : 'assets';
+  const vals  = [];
+  document.querySelectorAll(sel).forEach(chk => {
+    const label = chk.closest('label');
+    if (chk.checked) {
+      vals.push(chk.value);
+      label?.classList.add('bg-gray-900','text-white','border-gray-900');
+    } else {
+      label?.classList.remove('bg-gray-900','text-white','border-gray-900');
+    }
+  });
+  profile[pKey] = vals;
+  updateProfileProgress();
+}
+
+/* 프로필 완성도 계산 */
+function updateProfileProgress() {
+  const checks = [
+    !!profile.company,
+    !!profile.ceo,
+    !!profile.year,
+    !!profile.biztype,
+    !!profile.location,
+    (profile.intro || '').length >= 100,
+    (profile.fields || []).length > 0,
+    (profile.techs  || []).length > 0,
+    (profile.services     || []).length > 0,
+    (profile.achievements || []).length > 0,
+    !!(profile.differentiation),
+    !!(profile.problem),
+    (profile.goals   || []).length > 0,
+    (profile.support || []).length > 0,
+    (profile.assets  || []).length > 0,
+  ];
+  const pct = Math.round(checks.filter(Boolean).length / checks.length * 100);
+  const bar  = document.getElementById('profile-progress-bar');
+  const text = document.getElementById('profile-progress-text');
+  if (bar)  bar.style.width  = pct + '%';
+  if (text) text.textContent = pct + '%';
 }
 
 /**
@@ -790,10 +1135,17 @@ function addCustomTag(type) {
   toast(`✅ "${val}" 추가됐어요`);
 }
 function saveProfile() {
-  profile.year      = parseInt(document.getElementById('profile-year').value);
-  profile.intro     = document.getElementById('profile-intro').value;
-  // fieldPool / techPool은 renderTagArea에서 이미 profile에 반영돼 있음
+  profile.company         = document.getElementById('p-company').value.trim();
+  profile.ceo             = document.getElementById('p-ceo').value.trim();
+  profile.year            = parseInt(document.getElementById('p-year').value) || 2022;
+  profile.biztype         = document.getElementById('p-biztype').value;
+  profile.location        = document.getElementById('p-location').value.trim();
+  profile.intro           = document.getElementById('p-intro').value.trim();
+  profile.differentiation = document.getElementById('p-differentiation').value.trim();
+  profile.problem         = document.getElementById('p-problem').value.trim();
+  // fieldPool/techPool/fields/techs는 renderTagArea에서 이미 반영
   saveLocal('me_profile', profile);
+  updateProfileProgress();
   toast('✅ 프로필이 저장됐어요');
 }
 
@@ -828,14 +1180,7 @@ async function fetchSource(url, sourceName) {
     const res  = await fetch(url);
     const json = await res.json();
     const items = (json.items || [])
-      .filter(d => {
-        // endDe가 없으면 상시모집으로 포함
-        if (!d.endDe) return true;
-        const dd = dday(d.endDe);
-        // dday가 null이면 날짜 파싱 실패 or 마감 — 나라장터는 날짜형식이 다를 수 있어 파싱 실패시 포함
-        if (dd === null && d.endDe.length < 8) return true; // 날짜 형식 이상 → 포함
-        return dd !== null; // 마감 안 된 것만 포함
-      })
+      .filter(d => !d.endDe || dday(d.endDe) !== null)
       .map(d => ({ ...d, source: d.source || sourceName }));
     return { items, ok: true };
   } catch {
