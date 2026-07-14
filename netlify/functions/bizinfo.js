@@ -2,7 +2,7 @@ const https = require('https');
 
 const API_KEY = '2301e3f5202350fe07f8ec100c3b54f0730095626136f833d819c9f9ce43b265';
 const BASE_URL = 'apis.data.go.kr';
-const API_PATH = '/B552735/kisedKstartupService01/getAnnouncementInformation';
+const API_PATH = '/B552735/kisedKstartupService01/getAnnouncementInformation01';
 
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
