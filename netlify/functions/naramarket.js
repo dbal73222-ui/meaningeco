@@ -22,29 +22,35 @@ function httpsGet(url) {
   });
 }
 
-/** JSON 응답 파싱 (나라장터는 JSON 지원) */
+/** XML 응답 파싱 */
+function getTag(xml, tag) {
+  const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
+  if (!m) return '';
+  return m[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
+}
+
 function parseResponse(body) {
   try {
-    const json = JSON.parse(body);
-    const items = json?.response?.body?.items?.item || [];
-    const totalCount = json?.response?.body?.totalCount || 0;
-    // 배열이 아닌 단건일 때 대비
-    const list = Array.isArray(items) ? items : [items];
-    return {
-      items: list.map(it => ({
-        pblancNm:    it.bidNtceNm      || '',
-        pblancUrl:   it.bidNtceUrl     || `https://www.g2b.go.kr`,
-        jrsdInsttNm: it.ntceInsttNm   || '',
-        excInsttNm:  it.dminsttNm     || '',
-        category:    it.prdctClsfcNm  || it.ntceKindNm || '조달',
-        region:      it.ntceInsttOfclNm || '전국',
-        startDe:     (it.bidNtceDt||'').replace(/[^0-9]/g,'').slice(0,8),
-        endDe:       (it.bidClseDt||'').replace(/[^0-9]/g,'').slice(0,8),
-        target:      it.reqrmnDcmntNm || '',
+    const items = [];
+    const re = /<item>([\s\S]*?)<\/item>/g;
+    let m;
+    while ((m = re.exec(body)) !== null) {
+      const b = m[1];
+      items.push({
+        pblancNm:    getTag(b, 'bidNtceNm')          || '',
+        pblancUrl:   getTag(b, 'bidNtceUrl')          || 'https://www.g2b.go.kr',
+        jrsdInsttNm: getTag(b, 'ntceInsttNm')         || '',
+        excInsttNm:  getTag(b, 'dminsttNm')           || '',
+        category:    getTag(b, 'pubPrcrmntLrgClsfcNm') || getTag(b, 'srvceDivNm') || '용역',
+        region:      getTag(b, 'ntceInsttOfclNm')      || '전국',
+        startDe:     (getTag(b, 'bidNtceDt') || '').replace(/[^0-9]/g, '').slice(0, 8),
+        endDe:       (getTag(b, 'bidClseDt') || '').replace(/[^0-9]/g, '').slice(0, 8),
+        target:      getTag(b, 'cntrctCnclsMthdNm')   || '',
         source:      '나라장터',
-      })),
-      totalCount,
-    };
+      });
+    }
+    const totalCount = body.match(/<totalCount>([\s\S]*?)<\/totalCount>/)?.[1]?.trim() || '0';
+    return { items, totalCount };
   } catch {
     return { items: [], totalCount: 0 };
   }
