@@ -14,43 +14,37 @@
     <p class="text-sm text-gray-400 mt-1">미닝에코 · 실시간 공고 데이터</p>
   </div>
 
-  <!-- 필터 -->
   <div class="flex gap-2 mb-5 flex-wrap">
-    <button onclick="filterData('all')"  id="btn-all"  class="px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium">전체</button>
-    <button onclick="filterData('창업')" id="btn-창업" class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">창업</button>
-    <button onclick="filterData('기술')" id="btn-기술" class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">기술</button>
-    <button onclick="filterData('금융')" id="btn-금융" class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">금융</button>
-    <button onclick="filterData('경영')" id="btn-경영" class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">경영</button>
+    <button onclick="filterData('all')"        id="btn-all"        class="px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium">전체</button>
+    <button onclick="filterData('창업')"       id="btn-창업"       class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">창업</button>
+    <button onclick="filterData('멘토링')"     id="btn-멘토링"     class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">멘토링</button>
+    <button onclick="filterData('자금')"       id="btn-자금"       class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">자금</button>
+    <button onclick="filterData('글로벌')"     id="btn-글로벌"     class="px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">글로벌</button>
   </div>
 
   <div id="status" class="text-center py-8 text-sm text-gray-400">공고를 불러오는 중...</div>
   <div id="cards" class="space-y-4"></div>
-  <p class="text-center text-xs text-gray-300 mt-6">데이터 출처: 중소벤처기업부 기업마당 · 공공데이터포털</p>
+  <p class="text-center text-xs text-gray-300 mt-6">데이터 출처: 창업진흥원 K-Startup · 공공데이터포털</p>
 </div>
 
 <script>
 const PROXY = '/api/bizinfo';
 let allData = [];
 
-// reqstBeginEndDe 형식: "2026.01.01~2026.03.31" 또는 "2026-01-01 ~ 2026-03-31" 등
-function parseEndDate(reqstBeginEndDe) {
-  if (!reqstBeginEndDe) return null;
-  // 물결(~) 기준으로 뒤쪽이 종료일
-  const parts = reqstBeginEndDe.split('~');
-  if (parts.length < 2) return null;
-  const raw = parts[1].trim().replace(/\./g, '-').replace(/[^0-9-]/g, '');
-  return raw || null;
+function parseDate(str) {
+  if (!str || str.length < 8) return null;
+  return `${str.slice(0,4)}-${str.slice(4,6)}-${str.slice(6,8)}`;
 }
 
-function dday(reqstBeginEndDe) {
-  const endStr = parseEndDate(reqstBeginEndDe);
+function dday(endDe) {
+  const endStr = parseDate(endDe);
   if (!endStr) return null;
   const end   = new Date(endStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diff  = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
-  if (diff < 0)  return null;
-  if (diff === 0) return '오늘 마감';
+  if (diff < 0)   return null;
+  if (diff === 0)  return '오늘 마감';
   return 'D-' + diff;
 }
 
@@ -58,9 +52,8 @@ function renderCards(data) {
   const container = document.getElementById('cards');
   const status    = document.getElementById('status');
 
-  const active = data.filter(item => dday(item.reqstBeginEndDe) !== null);
-
-  if (!active.length) {
+  // 마감일 없는 것도 표시 (상시모집 등)
+  if (!data.length) {
     status.textContent   = '해당 분야 공고가 없어요.';
     status.style.display = 'block';
     container.innerHTML  = '';
@@ -68,36 +61,34 @@ function renderCards(data) {
   }
 
   status.style.display = 'none';
-  container.innerHTML  = active.map(item => {
-    const dd       = dday(item.reqstBeginEndDe);
+  container.innerHTML  = data.map(item => {
+    const dd       = dday(item.endDe);
     const isUrgent = dd && dd.startsWith('D-') && parseInt(dd.slice(2)) <= 7;
-
-    // 신청기간 파싱
-    const period = item.reqstBeginEndDe || '-';
-    const [startRaw, endRaw] = period.split('~').map(s => s.trim());
-    const fmt = s => s ? s.replace(/(\d{4})[-.](\d{2})[-.](\d{2})/, '$1.$2.$3') : '-';
+    const ddLabel  = dd || '상시모집';
+    const startFmt = parseDate(item.startDe)?.replace(/-/g, '.') || '-';
+    const endFmt   = parseDate(item.endDe)?.replace(/-/g, '.') || '상시';
 
     return `
       <div class="bg-white rounded-2xl border border-gray-100 p-5">
         <div class="flex justify-between items-start mb-3">
           <span class="text-xs font-bold px-2 py-1 rounded-full bg-blue-50 text-blue-600">
-            ${item.pldirSportRealmLclasCodeNm || '지원사업'}
+            ${item.category || '지원사업'}
           </span>
-          <span class="text-xs font-bold ${isUrgent ? 'text-red-500' : 'text-gray-400'}">${dd}</span>
+          <span class="text-xs font-bold ${isUrgent ? 'text-red-500' : 'text-gray-400'}">${ddLabel}</span>
         </div>
         <p class="font-bold text-base mb-1 leading-snug">${item.pblancNm || '-'}</p>
-        <p class="text-xs text-gray-400 mb-3">${item.jrsdInsttNm || ''} · ${item.excInsttNm || '-'}</p>
+        <p class="text-xs text-gray-400 mb-3">${item.jrsdInsttNm || ''} ${item.region ? '· ' + item.region : ''}</p>
         <div class="grid grid-cols-2 gap-2 mb-3">
           <div class="bg-gray-50 rounded-xl p-3">
             <p class="text-xs text-gray-400 mb-0.5">접수 시작</p>
-            <p class="text-sm font-bold">${fmt(startRaw)}</p>
+            <p class="text-sm font-bold">${startFmt}</p>
           </div>
           <div class="bg-gray-50 rounded-xl p-3">
             <p class="text-xs text-gray-400 mb-0.5">마감일</p>
-            <p class="text-sm font-bold ${isUrgent ? 'text-red-500' : ''}">${fmt(endRaw)}</p>
+            <p class="text-sm font-bold ${isUrgent ? 'text-red-500' : ''}">${endFmt}</p>
           </div>
         </div>
-        <a href="${item.pblancUrl || item.rceptEngnHmpgUrl || '#'}" target="_blank"
+        <a href="${item.pblancUrl || '#'}" target="_blank"
            class="block w-full py-2.5 rounded-xl bg-black text-white text-xs font-bold text-center">
           공고 보기 →
         </a>
@@ -115,7 +106,7 @@ function filterData(type) {
 
   const filtered = type === 'all'
     ? allData
-    : allData.filter(d => (d.pldirSportRealmLclasCodeNm || '').includes(type));
+    : allData.filter(d => (d.category || '').includes(type) || (d.pblancNm || '').includes(type));
   renderCards(filtered);
 }
 
@@ -123,17 +114,7 @@ async function loadData() {
   try {
     const res  = await fetch(`${PROXY}?pageNo=1&numOfRows=50`);
     const json = await res.json();
-
-    // 새 API 응답 구조: body.items.item (배열 or 단일 객체)
-    const raw = json?.items || [];
-    allData = (Array.isArray(raw) ? raw : [raw])
-      .filter(d => dday(d.reqstBeginEndDe) !== null)
-      .sort((a, b) => {
-        const ea = parseEndDate(a.reqstBeginEndDe) || '';
-        const eb = parseEndDate(b.reqstBeginEndDe) || '';
-        return ea.localeCompare(eb);
-      });
-
+    allData = json.items || [];
     renderCards(allData);
   } catch (e) {
     console.error(e);
