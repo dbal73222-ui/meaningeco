@@ -14,6 +14,39 @@ function httpsGet(url) {
   });
 }
 
+function parseXML(xml) {
+  const getCol = (block, name) => {
+    const re = new RegExp(`<col name="${name}">([\\s\\S]*?)<\\/col>`);
+    const m = block.match(re);
+    if (!m) return '';
+    return m[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
+  };
+
+  const items = [];
+  const itemRe = /<item>([\s\S]*?)<\/item>/g;
+  let match;
+  while ((match = itemRe.exec(xml)) !== null) {
+    const b = match[1];
+    items.push({
+      pblancNm:    getCol(b, 'biz_pbanc_nm'),
+      pblancUrl:   getCol(b, 'detl_pg_url'),
+      jrsdInsttNm: getCol(b, 'pbanc_ntrp_nm'),
+      excInsttNm:  getCol(b, 'intg_pbanc_biz_nm'),
+      category:    getCol(b, 'supt_biz_clsfc'),
+      region:      getCol(b, 'supt_regin'),
+      startDe:     getCol(b, 'pbanc_rcpt_bgng_dt'),
+      endDe:       getCol(b, 'pbanc_rcpt_clsng_dt'),
+      target:      getCol(b, 'aply_trgt_ctnt'),
+    });
+  }
+
+  const totalCount = xml.match(/<totalCount>([\s\S]*?)<\/totalCount>/)?.[1]?.trim()
+    || xml.match(/<currentCount>([\s\S]*?)<\/currentCount>/)?.[1]?.trim()
+    || '0';
+
+  return { items, totalCount };
+}
+
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -30,16 +63,15 @@ exports.handler = async (event) => {
   const pageNo    = params.pageNo    || '1';
   const numOfRows = params.numOfRows || '50';
 
-  const url = `https://${BASE_URL}${API_PATH}?serviceKey=${API_KEY}&pageNo=${pageNo}&numOfRows=${numOfRows}&dataType=json`;
+  const url = `https://${BASE_URL}${API_PATH}?serviceKey=${API_KEY}&pageNo=${pageNo}&numOfRows=${numOfRows}`;
 
   try {
     const res = await httpsGet(url);
-    // 응답 그대로 전달 (디버깅용)
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ status: res.status, raw: res.body.slice(0, 1000) })
-    };
+    if (res.status !== 200) {
+      return { statusCode: res.status, headers, body: JSON.stringify({ error: `Upstream error: ${res.status}`, raw: res.body.slice(0, 300) }) };
+    }
+    const data = parseXML(res.body);
+    return { statusCode: 200, headers, body: JSON.stringify(data) };
   } catch (err) {
     return { statusCode: 502, headers, body: JSON.stringify({ error: err.message }) };
   }
