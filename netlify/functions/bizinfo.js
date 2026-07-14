@@ -1,5 +1,5 @@
 const API_KEY = '2301e3f5202350fe07f8ec100c3b54f0730095626136f833d819c9f9ce43b265';
-const BASE_URL = 'https://apis.data.go.kr/1130000/MsmeSbizPblanc/getMsmeSbizPblanc';
+const BASE_URL = 'https://apis.data.go.kr/1421000/bizinfo/pblancBsnsService';
 
 exports.handler = async (event) => {
   const headers = {
