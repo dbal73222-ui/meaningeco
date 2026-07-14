@@ -12,3 +12,18 @@
   from   = "/api/bizinfo"
   to     = "/.netlify/functions/bizinfo"
   status = 200
+
+[[redirects]]
+  from   = "/api/ai"
+  to     = "/.netlify/functions/ai"
+  status = 200
+
+[[redirects]]
+  from   = "/api/naramarket"
+  to     = "/.netlify/functions/naramarket"
+  status = 200
+
+[[redirects]]
+  from   = "/api/bizinfo2"
+  to     = "/.netlify/functions/bizinfo2"
+  status = 200
