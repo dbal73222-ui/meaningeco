@@ -125,7 +125,7 @@ async function loadData() {
     const json = await res.json();
 
     // 새 API 응답 구조: body.items.item (배열 or 단일 객체)
-    const raw = json?.body?.items?.item || [];
+    const raw = json?.items || [];
     allData = (Array.isArray(raw) ? raw : [raw])
       .filter(d => dday(d.reqstBeginEndDe) !== null)
       .sort((a, b) => {
