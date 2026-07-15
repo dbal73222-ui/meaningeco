@@ -40,7 +40,8 @@ exports.handler = async (event) => {
   try {
     const res = await httpsPost(
       'generativelanguage.googleapis.com',
-      `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      `/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      
       {
         systemInstruction: {
           parts: [{ text: '당신은 정부 지원사업 전문가이자 스타트업 사업계획서 컨설턴트입니다. 미닝에코(AI 기반 콘텐츠·행사 운영 스타트업)의 내부 AI 코파일럿으로, 간결하고 실무적인 답변을 한국어로 제공합니다.' }]
