@@ -71,9 +71,7 @@ exports.handler = async (event) => {
     const candidate = data.candidates?.[0];
     if (!candidate) {
       const blocked = data.promptFeedback?.blockReason;
-      const result  = blocked
-        ? `⚠️ Gemini 안전 필터에 의해 차단됐어요 (${blocked}). 공고명에 민감한 단어가 포함된 경우 발생할 수 있어요.`
-        : '결과를 가져오지 못했어요. (응답 없음)';
+      const result = `Gemini 응답 없음. status=${res.status}, body=${JSON.stringify(data).slice(0,200)}`;
       return { statusCode: 200, headers, body: JSON.stringify({ result }) };
     }
 
@@ -82,6 +80,7 @@ exports.handler = async (event) => {
       || (candidate.finishReason === 'SAFETY' ? '⚠️ 안전 정책으로 이 공고는 분석할 수 없어요.' : '결과를 가져오지 못했어요.');
     return { statusCode: 200, headers, body: JSON.stringify({ result }) };
   } catch (err) {
+    console.log('Gemini fetch error:', err.message, err.code || '');
     return { statusCode: 502, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
