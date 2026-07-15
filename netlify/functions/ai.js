@@ -1,4 +1,22 @@
 const https = require('https');
+function httpsGet(host, path) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: host,
+        path,
+        method: 'GET'
+      },
+      (res) => {
+        let out = '';
+        res.on('data', c => out += c);
+        res.on('end', () => resolve({ status: res.statusCode, body: out }));
+      }
+    );
+
+    req.on('error', reject);
+    req.end();
+  });
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 
