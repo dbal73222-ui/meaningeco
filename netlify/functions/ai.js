@@ -1,13 +1,8 @@
 const https = require("https");
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-const headers = {
-  "Access-Control-Allow-Origin": "*",
-  "Content-Type": "application/json",
-};
-
-function httpsPost(host, path, body) {
+function post(host, path, body) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
 
@@ -24,26 +19,31 @@ function httpsPost(host, path, body) {
       (res) => {
         let out = "";
 
-        res.on("data", (chunk) => {
-          out += chunk;
-        });
+        res.on("data", (d) => (out += d));
 
-        res.on("end", () => {
+        res.on("end", () =>
           resolve({
             status: res.statusCode,
             body: out,
-          });
-        });
+          })
+        );
       }
     );
 
     req.on("error", reject);
+
     req.write(data);
     req.end();
   });
 }
 
 exports.handler = async (event) => {
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Content-Type": "application/json",
+  };
+
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 204,
@@ -57,7 +57,7 @@ exports.handler = async (event) => {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        result: "GEMINI_API_KEY가 설정되지 않았습니다.",
+        result: "GEMINI_API_KEY가 설정되어 있지 않습니다.",
       }),
     };
   }
@@ -65,8 +65,9 @@ exports.handler = async (event) => {
   let prompt = "";
 
   try {
-    prompt = JSON.parse(event.body).prompt || "";
-  } catch {}
+    const body = JSON.parse(event.body || "{}");
+    prompt = body.prompt || "";
+  } catch (e) {}
 
   if (!prompt) {
     return {
@@ -79,85 +80,70 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = {
-      contents: [
-        {
-          role: "user",
+    const response = await post(
+      "generativelanguage.googleapis.com",
+      `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        systemInstruction: {
           parts: [
             {
-              text: `
-당신은 정부지원사업 전문 컨설턴트입니다.
-
-다음 공고를 분석하여 아래 항목을 한국어로 작성하세요.
-
-1. 공고 요약
-2. 신청 자격
-3. 평가 기준 분석
-4. 신청 체크리스트
-5. 사업계획서 초안
-
-공고 내용
-
-${prompt}
-`,
+              text:
+                "당신은 정부지원사업 전문 컨설턴트입니다. " +
+                "미닝에코의 입장에서 공고를 분석하고 " +
+                "신청 자격, 핵심 요약, 사업계획서 방향을 한국어로 작성합니다.",
             },
           ],
         },
-      ],
-      generationConfig: {
-        temperature: 0.5,
-        topP: 0.95,
-        maxOutputTokens: 4096,
-      },
-    };
 
-    const res = await httpsPost(
-      "generativelanguage.googleapis.com",
-      `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
-      body
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+
+        generationConfig: {
+          temperature: 0.4,
+          topP: 0.95,
+          maxOutputTokens: 1200,
+        },
+      }
     );
 
-    console.log("Gemini Status:", res.status);
-    console.log(res.body);
+    console.log("Gemini Status :", response.status);
+    console.log(response.body);
 
-    const data = JSON.parse(res.body);
+    const json = JSON.parse(response.body);
 
-    if (res.status !== 200) {
+    if (response.status !== 200) {
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          result: `Gemini 오류 (${res.status})\n${JSON.stringify(data)}`,
+          result:
+            `Gemini 오류 (${response.status})\n` +
+            JSON.stringify(json),
         }),
       };
     }
 
-    const candidate = data.candidates?.[0];
-
-    if (!candidate) {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          result: "Gemini가 응답을 반환하지 않았습니다.",
-        }),
-      };
-    }
-
-    const result =
-      candidate.content?.parts
-        ?.map((p) => p.text || "")
-        .join("\n") || "결과를 가져오지 못했습니다.";
+    const text =
+      json.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "결과를 가져오지 못했습니다.";
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        result,
+        result: text,
       }),
     };
   } catch (err) {
-    console.error(err);
+    console.log(err);
 
     return {
       statusCode: 500,
