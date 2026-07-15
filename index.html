@@ -731,7 +731,9 @@ function renderCards(data) {
 }
 
 /* ════ AI 분석 드로어 ════ */
+let _drawerItem = null;
 async function openAnalysis(item) {
+  _drawerItem = item;
   const { score, matched } = calcScore(item);
   const col = scoreColor(score);
   openDrawer(item.pblancNm, 'AI 공고 분석');
@@ -814,7 +816,7 @@ async function openAnalysis(item) {
     <div class="mb-3">
       <div class="flex justify-between items-center mb-2">
         <p class="text-sm font-bold">📝 사업계획서 초안</p>
-        <button onclick="runBusinessPlan('${encodeURIComponent(JSON.stringify(item))}')"
+        <button onclick="runBusinessPlan(_drawerItem)"
           class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-full font-medium">초안 생성</button>
       </div>
       <div id="ai-bizplan" class="text-sm text-gray-400 bg-gray-50 rounded-xl p-4 min-h-[80px]">
@@ -903,8 +905,8 @@ async function runEligibility(name, target, category) {
   document.getElementById('ai-eligibility').innerHTML = `<div class="prose text-sm text-gray-700">${markdownToHTML(result)}</div>`;
 }
 
-async function runBusinessPlan(itemStr) {
-  const item = JSON.parse(decodeURIComponent(itemStr));
+async function runBusinessPlan(item) {
+  if (!item) return;
   const p    = profile;
   const age  = new Date().getFullYear() - (p.year || 2022);
   const mock = `## 사업 개요\n${p.company||'당사'}는 ${(p.fields||[]).join(', ')} 분야에서 혁신적인 솔루션을 제공합니다.\n\n## 문제 정의\n${p.problem||'시장 내 비효율과 디지털 전환 수요 증가에 대응합니다.'}\n\n## 기술 경쟁력\n${(p.techs||[]).join(', ')} 기술을 보유하고 있으며, ${p.differentiation||'차별화된 역량'}을 갖추고 있습니다.\n\n## 사업 수행 역량\n${(p.achievements||[]).join(', ')||'다수의 프로젝트 수행 경험을 보유하고 있습니다.'}\n\n## 기대 성과\n${(p.goals||['서비스 고도화', '신규 고객 확보']).join(' / ')}`;
@@ -1174,12 +1176,14 @@ function toggleBookmark(item) {
   renderDashStats();
 }
 
+const _bmMap = {};
 function renderBookmarks() {
   const empty = document.getElementById('bookmark-empty');
   const cards = document.getElementById('bookmark-cards');
   if (!bookmarks.length) { empty.classList.remove('hidden'); cards.innerHTML=''; return; }
   empty.classList.add('hidden');
   cards.innerHTML = bookmarks.map((item,i) => {
+    _bmMap[i] = item;
     const { score } = calcScore(item);
     const col = scoreColor(score);
     const dd = dday(item.endDe);
@@ -1192,8 +1196,8 @@ function renderBookmarks() {
       </div>
       <p class="font-bold text-sm mb-2 leading-snug">${item.pblancNm}</p>
       <div class="flex gap-2">
-        <button onclick='openAnalysis(${JSON.stringify(item).replace(/'/g,"&#39;")})' class="flex-1 py-2 rounded-xl bg-black text-white text-xs font-bold">AI 분석</button>
-        <button onclick='toggleBookmark(${JSON.stringify(item).replace(/'/g,"&#39;")})' class="px-3 py-2 rounded-xl border border-red-100 text-red-400 text-xs">삭제</button>
+        <button onclick='openAnalysis(_bmMap[${i}])' class="flex-1 py-2 rounded-xl bg-black text-white text-xs font-bold">AI 분석</button>
+        <button onclick='toggleBookmark(_bmMap[${i}])' class="px-3 py-2 rounded-xl border border-red-100 text-red-400 text-xs">삭제</button>
       </div>
     </div>`;
   }).join('');
@@ -1256,10 +1260,12 @@ function renderDashboard() {
   renderDashStats();
   const sorted = [...allData].sort((a,b)=>calcScore(b).score-calcScore(a).score);
   const top5 = sorted.slice(0,5);
+const _dashMap = {};
   document.getElementById('dash-top5').innerHTML = top5.map((item,i)=>{
+    _dashMap[i] = item;
     const {score} = calcScore(item);
     const col = scoreColor(score);
-    return `<div class="flex items-center gap-3 cursor-pointer hover:bg-gray-50 rounded-xl p-2 -mx-2" onclick='openAnalysis(${JSON.stringify(item).replace(/'/g,"&#39;")})'>
+    return `<div class="flex items-center gap-3 cursor-pointer hover:bg-gray-50 rounded-xl p-2 -mx-2" onclick='openAnalysis(_dashMap[${i}])'>
       <span class="text-sm font-bold text-gray-400 w-4">${i+1}</span>
       <div class="flex-1 min-w-0">
         <p class="text-xs font-semibold text-gray-800 leading-snug truncate">${item.pblancNm}</p>
