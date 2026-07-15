@@ -57,6 +57,8 @@ exports.handler = async (event) => {
     );
 
     const data = JSON.parse(res.body);
+    console.log('Gemini status:', res.status);
+    console.log('Gemini response:', JSON.stringify(data).slice(0, 500));
 
     /* 안전 필터로 차단됐을 때 처리 */
     const candidate = data.candidates?.[0];
