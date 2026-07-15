@@ -46,12 +46,31 @@ exports.handler = async (event) => {
           parts: [{ text: '당신은 정부 지원사업 전문가이자 스타트업 사업계획서 컨설턴트입니다. 미닝에코(AI 기반 콘텐츠·행사 운영 스타트업)의 내부 AI 코파일럿으로, 간결하고 실무적인 답변을 한국어로 제공합니다.' }]
         },
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 800, temperature: 0.4 }
+        generationConfig: { maxOutputTokens: 800, temperature: 0.4 },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+        ]
       }
     );
 
     const data = JSON.parse(res.body);
-    const result = data.candidates?.[0]?.content?.parts?.[0]?.text || '결과를 가져오지 못했어요.';
+
+    /* 안전 필터로 차단됐을 때 처리 */
+    const candidate = data.candidates?.[0];
+    if (!candidate) {
+      const blocked = data.promptFeedback?.blockReason;
+      const result  = blocked
+        ? `⚠️ Gemini 안전 필터에 의해 차단됐어요 (${blocked}). 공고명에 민감한 단어가 포함된 경우 발생할 수 있어요.`
+        : '결과를 가져오지 못했어요. (응답 없음)';
+      return { statusCode: 200, headers, body: JSON.stringify({ result }) };
+    }
+
+    /* 정상 응답 */
+    const result = candidate.content?.parts?.[0]?.text
+      || (candidate.finishReason === 'SAFETY' ? '⚠️ 안전 정책으로 이 공고는 분석할 수 없어요.' : '결과를 가져오지 못했어요.');
     return { statusCode: 200, headers, body: JSON.stringify({ result }) };
   } catch (err) {
     return { statusCode: 502, headers, body: JSON.stringify({ error: err.message }) };
