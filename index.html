@@ -74,6 +74,7 @@ pre{white-space:pre-wrap;word-break:break-word;}
     <button onclick="switchTab('비교')" id="tab-비교" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">⚖️ 비교</button>
     <button onclick="switchTab('대시보드')" id="tab-대시보드" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">📊 대시보드</button>
     <button onclick="switchTab('프로필')" id="tab-프로필" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">🏢 회사 프로필</button>
+    <button onclick="switchTab('관리대장')" id="tab-관리대장" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">📋 관리 대장</button>
   </div>
 
   <!-- 공고 탭 -->
@@ -178,6 +179,33 @@ pre{white-space:pre-wrap;word-break:break-word;}
       <p class="text-sm font-bold mb-3">⏰ 마감 임박</p>
       <div id="dash-urgent-list" class="space-y-2"></div>
     </div>
+  </div>
+
+  <!-- 관리 대장 탭 -->
+  <div id="pane-관리대장" class="hidden">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-base font-extrabold text-gray-900">공고 관리 대장</h2>
+        <p class="text-xs text-gray-400 mt-0.5">판정한 공고가 자동으로 여기에 기록됩니다</p>
+      </div>
+      <button onclick="exportVerdicts()" class="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50">CSV 내보내기</button>
+    </div>
+    <!-- 판정 필터 -->
+    <div class="flex gap-2 mb-4">
+      <button onclick="filterVerdicts('all')"   id="vf-all"   class="vf-btn px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium">전체</button>
+      <button onclick="filterVerdicts('통과')"  id="vf-통과"  class="vf-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">✅ 통과</button>
+      <button onclick="filterVerdicts('보류')"  id="vf-보류"  class="vf-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">⏸ 보류</button>
+      <button onclick="filterVerdicts('패스')"  id="vf-패스"  class="vf-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500">❌ 패스</button>
+    </div>
+    <div id="verdict-empty" class="text-center py-16 hidden">
+      <p class="text-3xl mb-3">📋</p>
+      <p class="text-sm text-gray-500 font-medium">판정한 공고가 없어요</p>
+      <p class="text-xs text-gray-400 mt-1">공고 카드에서 통과/보류/패스를 눌러보세요</p>
+    </div>
+    <div id="verdict-loading" class="text-center py-16">
+      <p class="text-sm text-gray-400">불러오는 중...</p>
+    </div>
+    <div id="verdict-cards" class="space-y-3"></div>
   </div>
 
   <!-- 프로필 탭 -->
@@ -574,7 +602,7 @@ function stars(score) {
 /* ════ 탭 ════ */
 function switchTab(name) {
   activeTab = name;
-  ['공고','북마크','비교','대시보드','프로필'].forEach(t => {
+  ['공고','북마크','비교','대시보드','프로필','관리대장'].forEach(t => {
     document.getElementById(`tab-${t}`).className = (t === name ? 'tab-active' : 'tab-inactive') + ' px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0';
     document.getElementById(`pane-${t}`).classList.toggle('hidden', t !== name);
   });
@@ -582,6 +610,7 @@ function switchTab(name) {
   if (name === '비교')     renderCompare();
   if (name === '대시보드') renderDashboard();
   if (name === '프로필')   renderProfile();
+  if (name === '관리대장') renderVerdicts('all');
 }
 
 /* ════ 필터 + 검색 ════ */
@@ -695,6 +724,7 @@ function renderCards(data) {
       <button onclick='addToCompare(${JSON.stringify(item).replace(/'/g,"&#39;")})' class="w-full mt-2 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400 ${inCmp?'bg-blue-50 text-blue-500 border-blue-200':''}">
         ${inCmp?'✓ 비교 목록에 있음':'+ 비교에 추가'}
       </button>
+      ${renderVerdictButtons(item, i)}
     </div>`;
   }).join('');
 }
@@ -883,6 +913,223 @@ async function runBusinessPlan(itemStr) {
     <div class="prose text-sm text-gray-800">${markdownToHTML(result)}</div>
     <p class="text-xs text-gray-300 mt-2 text-right">💾 결과가 저장되어 다음에도 볼 수 있어요</p>
     <button onclick="copyText('ai-bizplan')" class="mt-2 w-full py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">📋 복사하기</button>`;
+}
+
+/* ════ 판정 시스템 ════ */
+const NARA_REASON_CODES = [
+  { code: '지역제한',   label: '🗺 지역 제한' },
+  { code: '실적미달',   label: '📉 실적 미달' },
+  { code: '직생증필요', label: '📄 직생증 필요' },
+  { code: '하도급불가', label: '🚫 하도급 불가' },
+  { code: '컨소불가',   label: '🤝 컨소시엄 불가' },
+  { code: '예산부족',   label: '💰 예산 부족' },
+  { code: '기타',       label: '📝 기타' },
+];
+
+let verdicts     = JSON.parse(localStorage.getItem('me_verdicts') || '{}');
+let activeVFilter = 'all';
+
+function getVerdictKey(item) {
+  return item.pblancNm + '::' + (item.source || '');
+}
+
+function getVerdict(item) {
+  return verdicts[getVerdictKey(item)] || null;
+}
+
+function setVerdict(item, verdict, reasonCode) {
+  const key = getVerdictKey(item);
+  if (verdict === null) {
+    delete verdicts[key];
+  } else {
+    verdicts[key] = {
+      verdict,
+      reasonCode: reasonCode || null,
+      pblancNm:   item.pblancNm,
+      jrsdInsttNm: item.jrsdInsttNm || '',
+      source:     item.source || '',
+      endDe:      item.endDe || '',
+      pblancUrl:  item.pblancUrl || '',
+      category:   item.category || '',
+      verdictAt:  new Date().toLocaleDateString('ko-KR'),
+      item,
+    };
+  }
+  saveLocal('me_verdicts', verdicts);
+}
+
+/** 카드 내 판정 버튼 + 사유코드 드롭다운 렌더 */
+function renderVerdictButtons(item, cardIdx) {
+  const isNara    = (item.source === '나라장터');
+  const isKStart  = (item.source === 'K-Startup');
+  if (!isNara && !isKStart) return ''; // 기업마당은 스킵
+
+  const v   = getVerdict(item);
+  const vid = `vd-${cardIdx}`;
+
+  const btnClass = (type) => {
+    const base = 'flex-1 py-2 rounded-xl text-xs font-bold transition-all ';
+    if (v && v.verdict === type) {
+      if (type === '통과') return base + 'bg-emerald-500 text-white';
+      if (type === '보류') return base + 'bg-amber-400 text-white';
+      if (type === '패스') return base + 'bg-red-400 text-white';
+    }
+    return base + 'bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100';
+  };
+
+  const itemKey = getVerdictKey(item).replace(/'/g,"\\'");
+  const reasonDropdown = isNara ? `
+    <div id="reason-wrap-${cardIdx}" class="${v ? '' : 'hidden'} mt-2">
+      <select onchange="updateReason('${itemKey}', this.value)"
+        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-600 outline-none bg-white">
+        <option value="">사유코드 선택 (선택사항)</option>
+        ${NARA_REASON_CODES.map(r =>
+          `<option value="${r.code}" ${v && v.reasonCode === r.code ? 'selected' : ''}>${r.label}</option>`
+        ).join('')}
+      </select>
+    </div>` : '';
+
+  return `
+    <div class="mt-2 border-t border-gray-50 pt-2" id="${vid}">
+      <p class="text-xs text-gray-400 mb-1.5 font-medium">판정</p>
+      <div class="flex gap-1.5">
+        <button onclick="doVerdict(${cardIdx},${JSON.stringify(item).replace(/'/g,"&#39;")},'통과')" class="${btnClass('통과')}">✅ 통과</button>
+        <button onclick="doVerdict(${cardIdx},${JSON.stringify(item).replace(/'/g,"&#39;")},'보류')" class="${btnClass('보류')}">⏸ 보류</button>
+        <button onclick="doVerdict(${cardIdx},${JSON.stringify(item).replace(/'/g,"&#39;")},'패스')" class="${btnClass('패스')}">❌ 패스</button>
+        ${v ? `<button onclick="doVerdict(${cardIdx},${JSON.stringify(item).replace(/'/g,"&#39;")},null)" class="px-2.5 py-2 rounded-xl text-xs text-gray-300 hover:text-gray-500 border border-gray-100">취소</button>` : ''}
+      </div>
+      ${reasonDropdown}
+    </div>`;
+}
+
+/** 판정 버튼 클릭 */
+function doVerdict(cardIdx, item, verdict) {
+  // 같은 버튼 다시 누르면 취소
+  const existing = getVerdict(item);
+  if (existing && existing.verdict === verdict) {
+    setVerdict(item, null, null);
+    toast('판정을 취소했어요');
+  } else {
+    setVerdict(item, verdict, null);
+    const label = verdict === '통과' ? '✅ 통과' : verdict === '보류' ? '⏸ 보류' : '❌ 패스';
+    toast(`${label}로 판정했어요`);
+  }
+  // 해당 카드 판정 영역만 재렌더 (전체 카드 재렌더 없이)
+  applyFilters();
+}
+
+/** 사유코드 변경 */
+function updateReason(key, code) {
+  if (!verdicts[key]) return;
+  verdicts[key].reasonCode = code || null;
+  saveLocal('me_verdicts', verdicts);
+  toast(code ? `사유: ${NARA_REASON_CODES.find(r=>r.code===code)?.label || code}` : '사유코드를 지웠어요');
+}
+
+/** 관리 대장 렌더링 */
+function filterVerdicts(type) {
+  activeVFilter = type;
+  document.querySelectorAll('.vf-btn').forEach(b => {
+    b.className = 'vf-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500';
+  });
+  document.getElementById('vf-' + type).className = 'vf-btn px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium';
+  renderVerdicts(type);
+}
+
+function renderVerdicts(filter) {
+  const loading = document.getElementById('verdict-loading');
+  const empty   = document.getElementById('verdict-empty');
+  const cards   = document.getElementById('verdict-cards');
+  if (loading) loading.classList.add('hidden');
+
+  let list = Object.values(verdicts);
+  if (filter && filter !== 'all') {
+    list = list.filter(v => v.verdict === filter);
+  }
+  // 최신순
+  list = list.reverse();
+
+  if (!list.length) {
+    empty.classList.remove('hidden');
+    cards.innerHTML = '';
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const verdictStyle = {
+    '통과': { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700', label: '✅ 통과' },
+    '보류': { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   badge: 'bg-amber-100 text-amber-600',   label: '⏸ 보류' },
+    '패스': { bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-700',     badge: 'bg-red-100 text-red-600',     label: '❌ 패스' },
+  };
+
+  cards.innerHTML = list.map((v, i) => {
+    const st  = verdictStyle[v.verdict] || verdictStyle['보류'];
+    const dd  = dday(v.endDe);
+    const reasonLabel = v.reasonCode ? NARA_REASON_CODES.find(r => r.code === v.reasonCode)?.label || v.reasonCode : null;
+    return `<div class="bg-white rounded-2xl border ${st.border} p-4 fade-up" style="animation-delay:${i*0.03}s">
+      <div class="flex justify-between items-start mb-2">
+        <span class="text-xs font-bold px-2.5 py-1 rounded-full ${st.badge}">${st.label}</span>
+        <div class="flex items-center gap-2">
+          ${dd ? `<span class="text-xs text-gray-400">${dd}</span>` : ''}
+          <span class="text-xs text-gray-300">${v.verdictAt||''}</span>
+        </div>
+      </div>
+      <p class="font-bold text-sm leading-snug mb-1">${escH(v.pblancNm)}</p>
+      <p class="text-xs text-gray-400 mb-2">${escH(v.jrsdInsttNm||'')}${v.source ? ` · <span class="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-gray-400 text-[10px] font-medium">${v.source}</span>` : ''}</p>
+      ${reasonLabel ? `<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">${reasonLabel}</span>` : ''}
+      <div class="flex gap-2 mt-3">
+        <a href="${v.pblancUrl||'#'}" target="_blank" class="flex-1 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold text-center">공고 보기 →</a>
+        <button onclick="removeVerdict('${escQ(Object.keys(verdicts).find(k=>verdicts[k]===v)||'')}')" class="px-3 py-2 rounded-xl border border-red-100 text-red-400 text-xs">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function removeVerdict(key) {
+  if (!key || !verdicts[key]) return;
+  delete verdicts[key];
+  saveLocal('me_verdicts', verdicts);
+  renderVerdicts(activeVFilter);
+  toast('판정 기록을 삭제했어요');
+}
+
+/** CSV 내보내기 */
+function exportVerdicts() {
+  const list = Object.values(verdicts);
+  if (!list.length) { toast('내보낼 판정 기록이 없어요'); return; }
+  const headers = [
+    'No', '발견일', '판정일', '공고번호', '공고명', '발주처', '탐색채널',
+    '사업예산(원, VAT포함)', '입찰·계약방식', '배점구조', '제출마감', '제출방법', 'PT',
+    '판정', '사유코드', '판정 근거(공고문 조항)', '스크리닝 소요(분)', '최종결과', '교훈·비고'
+  ];
+  const rows = list.map((v, i) => [
+    i + 1,                          // No
+    v.foundAt    || '',             // 발견일 (추후 추가 예정)
+    v.verdictAt  || '',             // 판정일
+    v.pblancNo   || '',             // 공고번호 (추후 AI 추출 예정)
+    v.pblancNm   || '',             // 공고명
+    v.jrsdInsttNm || '',            // 발주처
+    v.source     || '',             // 탐색채널
+    v.budget     || '',             // 사업예산 (추후 AI 추출 예정)
+    v.contractType || '',           // 입찰·계약방식 (추후 AI 추출 예정)
+    v.evalStructure || '',          // 배점구조 (추후 AI 추출 예정)
+    v.endDe ? fmtDate(v.endDe) : '', // 제출마감
+    v.submitMethod || '',           // 제출방법 (추후 AI 추출 예정)
+    v.hasPT      || '',             // PT (추후 AI 추출 예정)
+    v.verdict    || '',             // 판정
+    v.reasonCode || '',             // 사유코드
+    v.verdictBasis || '',           // 판정 근거
+    v.screeningMin || '',           // 스크리닝 소요(분)
+    v.finalResult || '',            // 최종결과
+    v.memo       || '',             // 교훈·비고
+  ].map(c => `"${String(c).replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url; a.download = `공고관리대장_${new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','')}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV 파일을 저장했어요');
 }
 
 /* ════ 마크다운 → HTML ════ */
