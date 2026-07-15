@@ -1,35 +1,44 @@
 const https = require("https");
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
   "Content-Type": "application/json",
 };
 
-function request(options, body = null) {
+function httpsPost(host, path, body) {
   return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      let data = "";
+    const data = JSON.stringify(body);
 
-      res.on("data", (chunk) => {
-        data += chunk;
-      });
+    const req = https.request(
+      {
+        hostname: host,
+        path,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data),
+        },
+      },
+      (res) => {
+        let out = "";
 
-      res.on("end", () => {
-        resolve({
-          status: res.statusCode,
-          body: data,
+        res.on("data", (chunk) => {
+          out += chunk;
         });
-      });
-    });
+
+        res.on("end", () => {
+          resolve({
+            status: res.statusCode,
+            body: out,
+          });
+        });
+      }
+    );
 
     req.on("error", reject);
-
-    if (body) {
-      req.write(JSON.stringify(body));
-    }
-
+    req.write(data);
     req.end();
   });
 }
@@ -56,8 +65,10 @@ exports.handler = async (event) => {
   let prompt = "";
 
   try {
-    prompt = JSON.parse(event.body).prompt;
-  } catch {
+    prompt = JSON.parse(event.body).prompt || "";
+  } catch {}
+
+  if (!prompt) {
     return {
       statusCode: 400,
       headers,
@@ -75,19 +86,17 @@ exports.handler = async (event) => {
           parts: [
             {
               text: `
-너는 정부지원사업 전문 컨설턴트이다.
+당신은 정부지원사업 전문 컨설턴트입니다.
 
-다음 공고를 분석하여 아래 JSON 형식으로 응답한다.
+다음 공고를 분석하여 아래 항목을 한국어로 작성하세요.
 
-{
-"summary":"",
-"eligibility":"",
-"evaluation":"",
-"checklist":"",
-"proposal":""
-}
+1. 공고 요약
+2. 신청 자격
+3. 평가 기준 분석
+4. 신청 체크리스트
+5. 사업계획서 초안
 
-공고
+공고 내용
 
 ${prompt}
 `,
@@ -96,47 +105,55 @@ ${prompt}
         },
       ],
       generationConfig: {
-        temperature: 0.3,
-        responseMimeType: "application/json",
+        temperature: 0.5,
+        topP: 0.95,
+        maxOutputTokens: 4096,
       },
     };
 
-    const response = await request(
-      {
-        hostname: "generativelanguage.googleapis.com",
-        path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
+    const res = await httpsPost(
+      "generativelanguage.googleapis.com",
+      `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
       body
     );
 
-    console.log("Gemini Status:", response.status);
-    console.log(response.body);
+    console.log("Gemini Status:", res.status);
+    console.log(res.body);
 
-    if (response.status !== 200) {
+    const data = JSON.parse(res.body);
+
+    if (res.status !== 200) {
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          result: `Gemini 오류 (${response.status})`,
+          result: `Gemini 오류 (${res.status})\n${JSON.stringify(data)}`,
         }),
       };
     }
 
-    const data = JSON.parse(response.body);
+    const candidate = data.candidates?.[0];
 
-    const text =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ??
-      "응답을 생성하지 못했습니다.";
+    if (!candidate) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          result: "Gemini가 응답을 반환하지 않았습니다.",
+        }),
+      };
+    }
+
+    const result =
+      candidate.content?.parts
+        ?.map((p) => p.text || "")
+        .join("\n") || "결과를 가져오지 못했습니다.";
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        result: text,
+        result,
       }),
     };
   } catch (err) {
