@@ -672,6 +672,7 @@ function renderCards(data) {
   status.style.display = 'none';
 
   container.innerHTML = data.map((item, i) => {
+    _cardMap[i] = item;
     const { score, matched } = calcScore(item);
     const col   = scoreColor(score);
     const dd    = dday(item.endDe);
@@ -715,13 +716,13 @@ function renderCards(data) {
       <div class="flex gap-2">
         <a href="${item.pblancUrl||'#'}" target="_blank"
            class="flex-1 py-2.5 rounded-xl bg-black text-white text-xs font-bold text-center">공고 보기 →</a>
-        <button onclick='openAnalysis(${JSON.stringify(item).replace(/'/g,"&#39;")})' class="px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700">AI 분석</button>
-        <button onclick='toggleBookmark(${JSON.stringify(item).replace(/'/g,"&#39;")})' id="bm-${i}"
+        <button onclick='_cardAction("analysis",${i})' class="px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700">AI 분석</button>
+        <button onclick='_cardAction("bookmark",${i})' id="bm-${i}"
           class="px-3 py-2.5 rounded-xl border text-xs font-bold bookmark-btn ${bm?'active':'border-gray-200 text-gray-400'}">
-          ${bm?'🔖':'🔖'}
+          🔖
         </button>
       </div>
-      <button onclick='addToCompare(${JSON.stringify(item).replace(/'/g,"&#39;")})' class="w-full mt-2 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400 ${inCmp?'bg-blue-50 text-blue-500 border-blue-200':''}">
+      <button onclick='_cardAction("compare",${i})' class="w-full mt-2 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400 ${inCmp?'bg-blue-50 text-blue-500 border-blue-200':''}">
         ${inCmp?'✓ 비교 목록에 있음':'+ 비교에 추가'}
       </button>
       ${renderVerdictButtons(item, i)}
@@ -915,6 +916,15 @@ async function runBusinessPlan(itemStr) {
     <button onclick="copyText('ai-bizplan')" class="mt-2 w-full py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">📋 복사하기</button>`;
 }
 
+/* ════ 카드 액션 헬퍼 (인라인 JSON 대신 인덱스 참조) ════ */
+function _cardAction(action, idx) {
+  const item = _cardMap[idx];
+  if (!item) return;
+  if (action === 'analysis') openAnalysis(item);
+  if (action === 'bookmark') toggleBookmark(item);
+  if (action === 'compare')  addToCompare(item);
+}
+
 /* ════ 판정 시스템 ════ */
 const NARA_REASON_CODES = [
   { code: '지역제한',   label: '🗺 지역 제한' },
@@ -926,8 +936,9 @@ const NARA_REASON_CODES = [
   { code: '기타',       label: '📝 기타' },
 ];
 
-let verdicts     = JSON.parse(localStorage.getItem('me_verdicts') || '{}');
+let verdicts      = JSON.parse(localStorage.getItem('me_verdicts') || '{}');
 let activeVFilter = 'all';
+const _cardMap    = {};   // cardIdx → item 객체 (인라인 JSON 대신 사용)
 
 function getVerdictKey(item) {
   return item.pblancNm + '::' + (item.source || '');
@@ -993,17 +1004,19 @@ function renderVerdictButtons(item, cardIdx) {
     <div class="mt-2 border-t border-gray-50 pt-2" id="${vid}">
       <p class="text-xs text-gray-400 mb-1.5 font-medium">판정</p>
       <div class="flex gap-1.5">
-        <button onclick="doVerdict(${cardIdx},${JSON.stringify(item).replace(/'/g,"&#39;")},'통과')" class="${btnClass('통과')}">✅ 통과</button>
-        <button onclick="doVerdict(${cardIdx},${JSON.stringify(item).replace(/'/g,"&#39;")},'보류')" class="${btnClass('보류')}">⏸ 보류</button>
-        <button onclick="doVerdict(${cardIdx},${JSON.stringify(item).replace(/'/g,"&#39;")},'패스')" class="${btnClass('패스')}">❌ 패스</button>
-        ${v ? `<button onclick="doVerdict(${cardIdx},${JSON.stringify(item).replace(/'/g,"&#39;")},null)" class="px-2.5 py-2 rounded-xl text-xs text-gray-300 hover:text-gray-500 border border-gray-100">취소</button>` : ''}
+        <button onclick="doVerdict(${cardIdx},'통과')" class="${btnClass('통과')}">✅ 통과</button>
+        <button onclick="doVerdict(${cardIdx},'보류')" class="${btnClass('보류')}">⏸ 보류</button>
+        <button onclick="doVerdict(${cardIdx},'패스')" class="${btnClass('패스')}">❌ 패스</button>
+        ${v ? `<button onclick="doVerdict(${cardIdx},null)" class="px-2.5 py-2 rounded-xl text-xs text-gray-300 hover:text-gray-500 border border-gray-100">취소</button>` : ''}
       </div>
       ${reasonDropdown}
     </div>`;
 }
 
 /** 판정 버튼 클릭 */
-function doVerdict(cardIdx, item, verdict) {
+function doVerdict(cardIdx, verdict) {
+  const item = _cardMap[cardIdx];
+  if (!item) return;
   // 같은 버튼 다시 누르면 취소
   const existing = getVerdict(item);
   if (existing && existing.verdict === verdict) {
@@ -1014,7 +1027,6 @@ function doVerdict(cardIdx, item, verdict) {
     const label = verdict === '통과' ? '✅ 통과' : verdict === '보류' ? '⏸ 보류' : '❌ 패스';
     toast(`${label}로 판정했어요`);
   }
-  // 해당 카드 판정 영역만 재렌더 (전체 카드 재렌더 없이)
   applyFilters();
 }
 
