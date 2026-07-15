@@ -1,107 +1,153 @@
-const https = require('https');
-function httpsGet(host, path) {
+const https = require("https");
+
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+
+const headers = {
+  "Access-Control-Allow-Origin": "*",
+  "Content-Type": "application/json",
+};
+
+function request(options, body = null) {
   return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname: host,
-        path,
-        method: 'GET'
-      },
-      (res) => {
-        let out = '';
-        res.on('data', c => out += c);
-        res.on('end', () => resolve({ status: res.statusCode, body: out }));
-      }
-    );
+    const req = https.request(options, (res) => {
+      let data = "";
 
-    req.on('error', reject);
-    req.end();
-  });
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
-
-function httpsPost(host, path, body) {
-  return new Promise((resolve, reject) => {
-    const data = JSON.stringify(body);
-    const req = https.request({
-      hostname: host, path, method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
-    }, res => {
-      let out = '';
-      res.on('data', c => out += c);
-      res.on('end', () => resolve({ status: res.statusCode, body: out }));
+      res.on("end", () => {
+        resolve({
+          status: res.statusCode,
+          body: data,
+        });
+      });
     });
-    req.on('error', reject);
-    req.write(data);
+
+    req.on("error", reject);
+
+    if (body) {
+      req.write(JSON.stringify(body));
+    }
+
     req.end();
   });
 }
 
 exports.handler = async (event) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Content-Type': 'application/json',
-  };
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
-
-  let prompt = '';
-  try { prompt = JSON.parse(event.body).prompt || ''; } catch {}
-  if (!prompt) return { statusCode: 400, headers, body: JSON.stringify({ error: 'prompt required' }) };
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 204,
+      headers,
+      body: "",
+    };
+  }
 
   if (!GEMINI_KEY) {
     return {
-      statusCode: 200, headers,
-      body: JSON.stringify({ result: '⚠️ GEMINI_API_KEY 환경변수를 Netlify에 설정해주세요.' })
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        result: "GEMINI_API_KEY가 설정되지 않았습니다.",
+      }),
+    };
+  }
+
+  let prompt = "";
+
+  try {
+    prompt = JSON.parse(event.body).prompt;
+  } catch {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({
+        result: "prompt required",
+      }),
     };
   }
 
   try {
-const models = await httpsGet(
-    'generativelanguage.googleapis.com',
-    `/v1beta/models?key=${GEMINI_KEY}`
-);
+    const body = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `
+너는 정부지원사업 전문 컨설턴트이다.
 
-console.log(models.body);      
-      {
-        systemInstruction: {
-          parts: [{ text: '당신은 정부 지원사업 전문가이자 스타트업 사업계획서 컨설턴트입니다. 미닝에코(AI 기반 콘텐츠·행사 운영 스타트업)의 내부 AI 코파일럿으로, 간결하고 실무적인 답변을 한국어로 제공합니다.' }]
-        },
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 800, temperature: 0.4 },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-        ]
-      }
-    );
+다음 공고를 분석하여 아래 JSON 형식으로 응답한다.
 
-    const data = JSON.parse(res.body);
-    console.log('Gemini status:', res.status);
-    console.log('Gemini response:', JSON.stringify(data).slice(0, 500));
-    if (res.status !== 200) {
-  return { statusCode: 200, headers, body: JSON.stringify({ result: `Gemini 오류 ${res.status}: ${JSON.stringify(data).slice(0,200)}` }) };
+{
+"summary":"",
+"eligibility":"",
+"evaluation":"",
+"checklist":"",
+"proposal":""
 }
 
+공고
 
+${prompt}
+`,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.3,
+        responseMimeType: "application/json",
+      },
+    };
 
-    
+    const response = await request(
+      {
+        hostname: "generativelanguage.googleapis.com",
+        path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+      body
+    );
 
-    /* 안전 필터로 차단됐을 때 처리 */
-    const candidate = data.candidates?.[0];
-    if (!candidate) {
-      const blocked = data.promptFeedback?.blockReason;
-      const result = `Gemini 응답 없음. status=${res.status}, body=${JSON.stringify(data).slice(0,200)}`;
-      return { statusCode: 200, headers, body: JSON.stringify({ result }) };
+    console.log("Gemini Status:", response.status);
+    console.log(response.body);
+
+    if (response.status !== 200) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          result: `Gemini 오류 (${response.status})`,
+        }),
+      };
     }
 
-    /* 정상 응답 */
-    const result = candidate.content?.parts?.[0]?.text
-      || (candidate.finishReason === 'SAFETY' ? '⚠️ 안전 정책으로 이 공고는 분석할 수 없어요.' : '결과를 가져오지 못했어요.');
-    return { statusCode: 200, headers, body: JSON.stringify({ result }) };
+    const data = JSON.parse(response.body);
+
+    const text =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ??
+      "응답을 생성하지 못했습니다.";
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        result: text,
+      }),
+    };
   } catch (err) {
-    console.log('Gemini fetch error:', err.message, err.code || '');
-    return { statusCode: 502, headers, body: JSON.stringify({ error: err.message }) };
+    console.error(err);
+
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        result: err.message,
+      }),
+    };
   }
 };
