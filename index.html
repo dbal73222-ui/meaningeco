@@ -472,6 +472,7 @@ const PROXY       = '/api/bizinfo';      /* K-Startup (기존) */
 const NARA_PROXY  = '/api/naramarket';   /* 나라장터 */
 const BIZ2_PROXY  = '/api/bizinfo2';     /* 기업마당 */
 const AI_PROXY    = '/api/ai';
+const SHEETS_WEBHOOK = window.__SHEETS_WEBHOOK__ || '';
 
 const COMPANY_PROFILE = {
   /* 섹션 1: 기본 정보 */
@@ -848,6 +849,19 @@ async function openAnalysis(item) {
         <button onclick="runScreening()" id="btn-screening"
           class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-full font-medium min-h-[36px]">분석 시작</button>
       </div>
+      <!-- 공고문 붙여넣기 -->
+      <div class="px-4 pt-3 pb-1 border-b border-blue-50">
+        <div class="flex justify-between items-center mb-1.5">
+          <p class="text-xs font-medium text-gray-500">공고문 텍스트 (선택)</p>
+          <button onclick="document.getElementById('screening-text').value=''; document.getElementById('screening-char').textContent='0자'"
+            class="text-xs text-gray-300 hover:text-gray-400">지우기</button>
+        </div>
+        <textarea id="screening-text" rows="3"
+          placeholder="공고문 내용을 붙여넣으면 하도급·컨소 여부를 더 정확하게 분석해요"
+          oninput="document.getElementById('screening-char').textContent=this.value.length+'자'"
+          class="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-blue-300 resize-none text-gray-700 placeholder-gray-300"></textarea>
+        <p id="screening-char" class="text-right text-xs text-gray-300 mt-0.5">0자</p>
+      </div>
       <div id="ai-screening" class="px-4 py-4 text-sm text-gray-400">
         '분석 시작'을 누르면 입찰 참여 가능 여부를 자동으로 판단해드려요.
       </div>
@@ -973,11 +987,13 @@ async function runScreening() {
     AI가 입찰 조건을 분석 중이에요...
   </div>`;
 
+  const extraText = (document.getElementById('screening-text')?.value || '').trim();
+
   const prompt = `아래 나라장터 공고 정보를 분석해서 JSON으로만 답하세요. 다른 텍스트는 포함하지 마세요.
 
 공고명: ${item.pblancNm}
 발주처: ${item.jrsdInsttNm || ''}
-공고 내용: ${item.target || item.category || ''}
+공고 내용: ${item.target || item.category || ''}${extraText ? `\n공고문 원문:\n${extraText}` : ''}
 
 반환 형식:
 {
@@ -987,7 +1003,7 @@ async function runScreening() {
   "하도급": "Y" | "N" | "불명확",
   "컨소시엄": "Y" | "N" | "불명확",
   "입찰방식": "방식명",
-  "근거": "판단 근거 한 줄"
+  "근거": "판단 근거를 한국어로 한 줄 작성"
 }`;
 
   let parsed = null;
@@ -999,7 +1015,9 @@ async function runScreening() {
     });
     const data = await res.json();
     const text = (data.result || '').replace(/```json|```/g, '').trim();
-    parsed = JSON.parse(text);
+    // JSON 블록만 추출 (앞뒤 불필요한 텍스트 제거)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
   } catch(e) {
     el.innerHTML = `<div class="text-red-400 text-sm py-2">
       분석에 실패했어요. 다시 시도해주세요.
@@ -1031,6 +1049,7 @@ async function runScreening() {
       verdicts[key].bidMethod       = parsed.입찰방식 || '';
       verdicts[key].screeningResult = parsed;
       saveLocal('me_verdicts', verdicts);
+      syncToSheets(verdicts[key]);
     }
   }
 
@@ -1123,17 +1142,47 @@ function setVerdict(item, verdict, reasonCode) {
     verdicts[key] = {
       verdict,
       reasonCode: reasonCode || null,
-      pblancNm:   item.pblancNm,
+      pblancNm:    item.pblancNm,
       jrsdInsttNm: item.jrsdInsttNm || '',
-      source:     item.source || '',
-      endDe:      item.endDe || '',
-      pblancUrl:  item.pblancUrl || '',
-      category:   item.category || '',
-      verdictAt:  new Date().toLocaleDateString('ko-KR'),
+      source:      item.source || '',
+      endDe:       item.endDe || '',
+      pblancUrl:   item.pblancUrl || '',
+      category:    item.category || '',
+      verdictAt:   new Date().toLocaleDateString('ko-KR'),
+      foundAt:     new Date().toLocaleDateString('ko-KR'),
       item,
     };
   }
   saveLocal('me_verdicts', verdicts);
+  if (verdict !== null) syncToSheets(verdicts[key]);
+}
+
+/** Google Sheets 동기화 (Apps Script 웹훅 경유) */
+async function syncToSheets(v) {
+  if (!v) return;
+  try {
+    const res = await fetch('/api/sheets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pblancNm:      v.pblancNm,
+        jrsdInsttNm:   v.jrsdInsttNm,
+        source:        v.source,
+        endDe:         v.endDe ? fmtDate(v.endDe) : '',
+        verdict:       v.verdict,
+        reasonCode:    v.reasonCode || '',
+        verdictAt:     v.verdictAt,
+        foundAt:       v.foundAt || v.verdictAt,
+        verdictBasis:  v.verdictBasis || '',
+        bidMethod:     v.bidMethod || '',
+        screeningResult: v.screeningResult || null,
+      })
+    });
+    const data = await res.json();
+    if (!data.ok) console.warn('Sheets 동기화 실패:', data.error);
+  } catch(e) {
+    console.warn('Sheets 동기화 오류 (로컬 저장은 완료):', e.message);
+  }
 }
 
 /** 카드 내 판정 버튼 + 사유코드 드롭다운 렌더 */
