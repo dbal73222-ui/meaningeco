@@ -730,14 +730,30 @@ function applyFilters() {
   if (activeSource !== 'all') {
     filtered = filtered.filter(d => (d.source || 'K-Startup') === activeSource);
   }
-  if (activeRegion === '전국') {
-    filtered = filtered.filter(d => !d.region || d.region.includes('전국'));
-  } else if (activeRegion === '수도권') {
-    filtered = filtered.filter(d => {
-      const r = d.region || '';
-      return r.includes('전국') || r.includes('서울') || r.includes('경기') || r.includes('인천') || r.includes('수도권');
-    });
-  }
+// 지역 필터
+if (activeRegion === '전국') {
+  filtered = filtered.filter(d => {
+    // 나라장터는 현재 region 필드가 담당자명이라 모두 통과
+    if (d.source === '나라장터') return true;
+
+    return !d.region || d.region.includes('전국');
+  });
+
+} else if (activeRegion === '수도권') {
+  filtered = filtered.filter(d => {
+    // 나라장터는 아직 지역정보를 제공하지 않으므로 일단 모두 표시
+    if (d.source === '나라장터') return true;
+
+    const r = d.region || '';
+    return (
+      r.includes('전국') ||
+      r.includes('서울') ||
+      r.includes('경기') ||
+      r.includes('인천') ||
+      r.includes('수도권')
+    );
+  });
+}
   if (activeFilter !== 'all') {
     filtered = filtered.filter(d => (d.category||'').includes(activeFilter) || (d.pblancNm||'').includes(activeFilter));
   }
