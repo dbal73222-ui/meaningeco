@@ -38,6 +38,51 @@ pre{white-space:pre-wrap;word-break:break-word;}
 </head>
 <body class="bg-gray-50 min-h-screen">
 
+<!-- ══ 첫 방문 안내 모달 ══ -->
+<div id="welcome-modal" class="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 px-4 pb-6" style="display:none!important">
+  <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-2xl">👋</span>
+      <p class="text-base font-extrabold text-gray-900">처음이신가요?</p>
+    </div>
+    <p class="text-sm text-gray-600 leading-relaxed mb-4">
+      이 서비스는 정부지원사업을 <em class="not-italic font-bold text-gray-900">찾는</em> 서비스가 아니라,<br>
+      우리 회사에 맞는 사업인지 <em class="not-italic font-bold text-emerald-600">빠르게 판단</em>하기 위한<br>
+      <span class="font-bold">AI Copilot</span>입니다.
+    </p>
+    <div class="bg-gray-50 rounded-2xl p-4 mb-5 space-y-2.5">
+      <p class="text-xs font-bold text-gray-500 mb-3">사용 순서</p>
+      <div class="flex items-center gap-3">
+        <span class="w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+        <span class="text-sm text-gray-700 font-medium">📋 공고 찾기</span>
+      </div>
+      <div class="flex items-center gap-3 pl-3">
+        <span class="text-gray-300 text-xs">↓</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+        <span class="text-sm text-gray-700 font-medium">🤖 우리 회사에 맞는지 AI 분석</span>
+      </div>
+      <div class="flex items-center gap-3 pl-3">
+        <span class="text-gray-300 text-xs">↓</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+        <span class="text-sm text-gray-700 font-medium">✅ 통과 / ⏸ 보류 / ❌ 패스 판정</span>
+      </div>
+      <div class="flex items-center gap-3 pl-3">
+        <span class="text-gray-300 text-xs">↓</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">4</span>
+        <span class="text-sm text-gray-700 font-medium">📊 자동으로 지원 현황에 저장</span>
+      </div>
+    </div>
+    <button onclick="closeWelcome(false)" class="w-full py-3.5 rounded-2xl bg-gray-900 text-white font-bold text-sm mb-2">시작하기 →</button>
+    <button onclick="closeWelcome(true)" class="w-full py-2 text-xs text-gray-400 font-medium">다시 보지 않기</button>
+  </div>
+</div>
+
 <!-- ══ OVERLAY ══ -->
 <div id="overlay" class="overlay fixed inset-0 bg-black/40 z-40" onclick="closeDrawer()"></div>
 
@@ -63,18 +108,18 @@ pre{white-space:pre-wrap;word-break:break-word;}
     <div class="flex items-center gap-2 mb-1">
       <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">미닝에코 내부용</span>
     </div>
-    <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">지원사업 AI Copilot</h1>
-    <p class="text-sm text-gray-400 mt-0.5">공고 탐색부터 사업계획서 초안까지</p>
+    <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">정부지원사업 AI Copilot</h1>
+    <p class="text-sm text-gray-500 mt-1 leading-relaxed">대표가 공고를 <em class="not-italic font-semibold text-gray-700">찾는 시간</em>보다<br>우리 회사에 <em class="not-italic font-semibold text-emerald-600">맞는지 판단하는 시간</em>을 줄이기 위해 만든 서비스</p>
   </div>
 
   <!-- 탭 -->
   <div class="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
     <button onclick="switchTab('공고')" id="tab-공고" class="tab-active px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">📋 공고</button>
     <button onclick="switchTab('북마크')" id="tab-북마크" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">🔖 북마크</button>
-    <button onclick="switchTab('비교')" id="tab-비교" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">⚖️ 비교</button>
+    <button onclick="switchTab('비교')" id="tab-비교" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">⚖️ 공고 비교하기</button>
     <button onclick="switchTab('대시보드')" id="tab-대시보드" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">📊 대시보드</button>
     <button onclick="switchTab('프로필')" id="tab-프로필" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">🏢 회사 프로필</button>
-    <button onclick="switchTab('관리대장')" id="tab-관리대장" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">📋 관리 대장</button>
+    <button onclick="switchTab('관리대장')" id="tab-관리대장" class="tab-inactive px-3.5 py-1.5 text-xs rounded-full font-semibold whitespace-nowrap flex-shrink-0">📊 지원 현황</button>
   </div>
 
   <!-- 공고 탭 -->
@@ -190,9 +235,17 @@ pre{white-space:pre-wrap;word-break:break-word;}
 
   <!-- 관리 대장 탭 -->
   <div id="pane-관리대장" class="hidden">
+    <!-- 상단 안내 -->
+    <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4 flex items-start gap-3">
+      <span class="text-xl flex-shrink-0">📊</span>
+      <div class="flex-1">
+        <p class="text-sm font-bold text-blue-900 mb-0.5">지원 현황</p>
+        <p class="text-xs text-blue-700 leading-relaxed">공고에서 판정한 결과가 자동으로 이 화면에 저장됩니다. CSV 다운로드도 가능합니다.</p>
+      </div>
+    </div>
     <div class="flex items-center justify-between mb-4">
       <div>
-        <h2 class="text-base font-extrabold text-gray-900">공고 관리 대장</h2>
+        <h2 class="text-base font-extrabold text-gray-900">지원 현황</h2>
         <p class="text-xs text-gray-400 mt-0.5">판정한 공고가 자동으로 여기에 기록됩니다</p>
       </div>
       <button onclick="exportVerdicts()" class="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50">CSV 내보내기</button>
@@ -694,7 +747,17 @@ function filterRegion(reg) {
 function renderCards(data) {
   const container = document.getElementById('cards');
   const status    = document.getElementById('status');
-  if (!data.length) { status.textContent = '해당 분야 공고가 없어요.'; status.style.display='block'; container.innerHTML=''; return; }
+  if (!data.length) {
+    status.innerHTML = `<div class="py-6">
+      <p class="text-2xl mb-3">🔍</p>
+      <p class="text-sm font-semibold text-gray-600 mb-1">조건에 맞는 공고가 없습니다</p>
+      <p class="text-xs text-gray-400 mb-4">필터를 변경하거나 검색어를 수정해보세요</p>
+      <button onclick="resetAllFilters()" class="px-4 py-2 rounded-full bg-gray-900 text-white text-xs font-bold">필터 초기화</button>
+    </div>`;
+    status.style.display = 'block';
+    container.innerHTML = '';
+    return;
+  }
   status.style.display = 'none';
 
   container.innerHTML = data.map((item, i) => {
@@ -739,17 +802,17 @@ function renderCards(data) {
       </div>
 
       <!-- 액션 버튼 -->
-      <div class="flex gap-2">
+      <div class="flex gap-2 mb-2">
         <a href="${item.pblancUrl||'#'}" target="_blank"
-           class="flex-1 py-2.5 rounded-xl bg-black text-white text-xs font-bold text-center">공고 보기 →</a>
-        <button onclick='_cardAction("analysis",${i})' class="px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700">AI 분석</button>
+           class="py-2.5 rounded-xl bg-black text-white text-xs font-bold text-center px-3 whitespace-nowrap">공고 보기 →</a>
         <button onclick='_cardAction("bookmark",${i})' id="bm-${i}"
           class="px-3 py-2.5 rounded-xl border text-xs font-bold bookmark-btn ${bm?'active':'border-gray-200 text-gray-400'}">
           🔖
         </button>
       </div>
-      <button onclick='_cardAction("compare",${i})' class="w-full mt-2 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400 ${inCmp?'bg-blue-50 text-blue-500 border-blue-200':''}">
-        ${inCmp?'✓ 비교 목록에 있음':'+ 비교에 추가'}
+      <button onclick='_cardAction("analysis",${i})' class="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold text-center mb-2">🤖 우리 회사에 맞는지 보기</button>
+      <button onclick='_cardAction("compare",${i})' class="w-full py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400 ${inCmp?'bg-blue-50 text-blue-500 border-blue-200':''}">
+        ${inCmp?'✓ 비교 목록에 있음':'+ 공고 비교하기'}
       </button>
       ${renderVerdictButtons(item, i)}
     </div>`;
@@ -763,31 +826,49 @@ async function openAnalysis(item) {
   const { score, matched } = calcScore(item);
   const col = scoreColor(score);
   openDrawer(item.pblancNm, 'AI 공고 분석');
-  document.getElementById('drawer-body').innerHTML = `
-    <!-- 적합도 링 -->
-    <div class="flex items-center gap-5 mb-5 p-4 ${col.bg} rounded-2xl border ${col.border}">
-      <svg width="72" height="72" viewBox="0 0 80 80">
-        <circle cx="40" cy="40" r="32" fill="none" stroke="#E5E7EB" stroke-width="8"/>
-        <circle cx="40" cy="40" r="32" fill="none" stroke="${col.ring}" stroke-width="8"
-          stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="${201-(201*score/100)}"
-          transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1s ease"/>
-      </svg>
-      <div>
-        <p class="text-3xl font-extrabold ${col.text}">${score}%</p>
-        <p class="text-xs text-gray-500 mt-0.5">미닝에코 적합도</p>
-        <div class="text-base mt-1">${stars(score)}</div>
-      </div>
-    </div>
 
-    <!-- 추천 이유 -->
-    <div class="mb-5">
-      <p class="text-sm font-bold mb-2">✅ 적합도 근거</p>
-      ${matched.length ? `<div class="space-y-1.5">
-        ${matched.map(m=>`<div class="flex items-center gap-2 text-sm">
-          <span class="w-8 text-xs font-bold text-emerald-600 text-right">+${m.pts}</span>
+  /* 추천 판단 텍스트 */
+  const recLabel = score >= 80 ? '강력 추천합니다' : score >= 60 ? '추천합니다' : score >= 40 ? '검토해볼 만합니다' : '신중하게 검토하세요';
+  const recEmoji = score >= 80 ? '🟢' : score >= 60 ? '🟡' : score >= 40 ? '🟠' : '🔴';
+
+  document.getElementById('drawer-body').innerHTML = `
+    <!-- AI 추천 결과 요약 카드 (상단 강조) -->
+    <div class="${col.bg} border ${col.border} rounded-2xl p-4 mb-5">
+      <div class="flex items-center gap-3 mb-3">
+        <svg width="56" height="56" viewBox="0 0 80 80" class="flex-shrink-0">
+          <circle cx="40" cy="40" r="32" fill="none" stroke="#E5E7EB" stroke-width="8"/>
+          <circle cx="40" cy="40" r="32" fill="none" stroke="${col.ring}" stroke-width="8"
+            stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="${201-(201*score/100)}"
+            transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1s ease"/>
+        </svg>
+        <div>
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <div class="text-lg">${stars(score)}</div>
+            <span class="text-xs font-bold ${col.text}">${score}%</span>
+          </div>
+          <p class="text-base font-extrabold text-gray-900">${recEmoji} ${recLabel}</p>
+          <p class="text-xs text-gray-500 mt-0.5">우리 회사 적합도 기준</p>
+        </div>
+      </div>
+      ${matched.length ? `
+      <div class="border-t border-white/60 pt-3 space-y-1.5">
+        ${matched.slice(0,4).map(m=>`<div class="flex items-center gap-2 text-xs">
+          <span class="text-emerald-500 font-bold flex-shrink-0">✓</span>
           <span class="text-gray-700">${m.label}</span>
+          <span class="ml-auto font-bold ${col.text} flex-shrink-0">+${m.pts}</span>
         </div>`).join('')}
-      </div>` : '<p class="text-xs text-gray-400">매칭 항목이 없어요</p>'}
+        ${matched.length > 4 ? `<p class="text-xs text-gray-400 pl-4">외 ${matched.length - 4}개 항목 일치</p>` : ''}
+      </div>` : `<p class="text-xs text-gray-400 border-t border-white/60 pt-3">매칭 항목이 없어요. 회사 프로필을 먼저 입력해주세요.</p>`}
+      <details class="mt-3">
+        <summary class="text-xs text-gray-400 cursor-pointer select-none hover:text-gray-600">왜 이런 결과가 나왔나요? ▾</summary>
+        <div class="mt-2 space-y-1.5 pt-2 border-t border-white/60">
+          ${matched.length ? matched.map(m=>`<div class="flex items-center gap-2 text-xs">
+            <span class="w-7 text-xs font-bold text-emerald-600 text-right flex-shrink-0">+${m.pts}</span>
+            <span class="text-gray-600">${m.label}</span>
+          </div>`).join('') : '<p class="text-xs text-gray-400">프로필 기반 매칭 항목 없음</p>'}
+          <p class="text-xs text-gray-300 pt-1">점수 = 키워드 매칭 기반 추정값 (AI 정밀 분석은 아래 버튼 활용)</p>
+        </div>
+      </details>
     </div>
 
     <!-- 신청 자격 검증 -->
@@ -872,7 +953,7 @@ async function openAnalysis(item) {
       <div class="flex justify-between items-center mb-2">
         <p class="text-sm font-bold">📝 사업계획서 초안</p>
         <button onclick="runBusinessPlan(_drawerItem)"
-          class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-full font-medium">초안 생성</button>
+          class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-full font-medium">사업계획서 초안 만들기</button>
       </div>
       <div id="ai-bizplan" class="text-sm text-gray-400 bg-gray-50 rounded-xl p-4 min-h-[80px]">
         회사 프로필과 공고를 바탕으로 사업계획서 초안을 작성해드려요.
@@ -1218,7 +1299,10 @@ function renderVerdictButtons(item, cardIdx) {
 
   return `
     <div class="mt-2 border-t border-gray-50 pt-2" id="${vid}">
-      <p class="text-xs text-gray-400 mb-1.5 font-medium">판정</p>
+      <div class="flex items-center gap-1.5 mb-1.5">
+        <p class="text-xs text-gray-400 font-medium">판정하기</p>
+        <button onclick="showVerdictGuide(this)" class="text-[10px] text-gray-300 hover:text-gray-400 border border-gray-200 rounded-full px-1.5 py-0.5 font-medium leading-none">판정이란?</button>
+      </div>
       <div class="flex gap-1.5">
         <button onclick="doVerdict(${cardIdx},'통과')" class="${btnClass('통과')}">✅ 통과</button>
         <button onclick="doVerdict(${cardIdx},'보류')" class="${btnClass('보류')}">⏸ 보류</button>
@@ -1966,7 +2050,87 @@ loadData();
 // 렌더 후 요약 카드 복원 (이전 저장 데이터 있으면)
 window.addEventListener('DOMContentLoaded', () => {
   if (profile.savedAt) renderProfileSummary();
+  initWelcomeModal();
 });
+
+/* ════ 첫 방문 안내 모달 ════ */
+function initWelcomeModal() {
+  const hidden = localStorage.getItem('me_welcome_hidden');
+  if (!hidden) {
+    const modal = document.getElementById('welcome-modal');
+    if (modal) modal.style.cssText = ''; // display:none!important 해제
+  }
+}
+function closeWelcome(neverShow) {
+  const modal = document.getElementById('welcome-modal');
+  if (modal) modal.style.cssText = 'display:none!important';
+  if (neverShow) localStorage.setItem('me_welcome_hidden', '1');
+}
+
+/* ════ 필터 전체 초기화 ════ */
+function resetAllFilters() {
+  const searchEl = document.getElementById('search-input');
+  if (searchEl) searchEl.value = '';
+  activeFilter = 'all';
+  activeSource = 'all';
+  activeRegion = 'all';
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.className = 'filter-btn px-3 py-1.5 bg-white border border-gray-200 text-xs rounded-full text-gray-500';
+  });
+  const allBtn = document.getElementById('btn-all');
+  if (allBtn) allBtn.className = 'filter-btn px-3 py-1.5 bg-black text-white text-xs rounded-full font-medium';
+  document.querySelectorAll('.src-btn').forEach(b => {
+    b.className = 'src-btn px-2.5 py-1 bg-white border border-gray-200 text-xs rounded-full text-gray-500';
+  });
+  const srcAll = document.getElementById('src-all');
+  if (srcAll) srcAll.className = 'src-btn px-2.5 py-1 bg-gray-900 text-white text-xs rounded-full font-medium';
+  document.querySelectorAll('.reg-btn').forEach(b => {
+    b.className = 'reg-btn px-2.5 py-1 bg-white border border-gray-200 text-xs rounded-full text-gray-500';
+  });
+  const regAll = document.getElementById('reg-all');
+  if (regAll) regAll.className = 'reg-btn px-2.5 py-1 bg-gray-900 text-white text-xs rounded-full font-medium';
+  renderCards(allData);
+}
+
+/* ════ 판정 안내 툴팁 ════ */
+function showVerdictGuide(btn) {
+  // 이미 안내 팝업이 있으면 제거
+  const existing = document.getElementById('verdict-guide-popup');
+  if (existing) { existing.remove(); return; }
+  const popup = document.createElement('div');
+  popup.id = 'verdict-guide-popup';
+  popup.className = 'fixed inset-0 z-50 flex items-center justify-center px-6 bg-black/40';
+  popup.innerHTML = `
+    <div class="bg-white rounded-2xl p-5 w-full max-w-xs shadow-2xl">
+      <p class="text-sm font-extrabold text-gray-900 mb-3">판정이란 무엇인가요?</p>
+      <div class="space-y-2.5 mb-4">
+        <div class="flex items-start gap-3">
+          <span class="text-lg flex-shrink-0">✅</span>
+          <div>
+            <p class="text-sm font-bold text-gray-800">통과</p>
+            <p class="text-xs text-gray-500">신청 검토 대상 — 사업계획서 준비 시작</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-lg flex-shrink-0">⏸</span>
+          <div>
+            <p class="text-sm font-bold text-gray-800">보류</p>
+            <p class="text-xs text-gray-500">추가 검토 필요 — 일단 저장만</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-lg flex-shrink-0">❌</span>
+          <div>
+            <p class="text-sm font-bold text-gray-800">패스</p>
+            <p class="text-xs text-gray-500">신청하지 않음 — 기록에만 남김</p>
+          </div>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 mb-4">판정 결과는 지원 현황 탭에 자동 저장됩니다.</p>
+      <button onclick="document.getElementById('verdict-guide-popup').remove()" class="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold">확인</button>
+    </div>`;
+  document.body.appendChild(popup);
+}
 </script>
 </body>
 </html>
