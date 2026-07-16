@@ -116,6 +116,13 @@ pre{white-space:pre-wrap;word-break:break-word;}
       <button onclick="filterSource('기업마당')"  id="src-기업마당"  class="src-btn px-2.5 py-1 bg-white border border-gray-200 text-xs rounded-full text-gray-500">🏢 기업마당</button>
       <span id="load-status" class="text-xs text-gray-300 ml-auto"></span>
     </div>
+    <!-- 지역 필터 -->
+    <div class="flex gap-2 mb-4 flex-wrap items-center">
+      <span class="text-xs text-gray-400 font-medium">지역</span>
+      <button onclick="filterRegion('all')"    id="reg-all"    class="reg-btn px-2.5 py-1 bg-gray-900 text-white text-xs rounded-full font-medium">전체</button>
+      <button onclick="filterRegion('전국')"   id="reg-전국"   class="reg-btn px-2.5 py-1 bg-white border border-gray-200 text-xs rounded-full text-gray-500">🌐 전국</button>
+      <button onclick="filterRegion('수도권')" id="reg-수도권" class="reg-btn px-2.5 py-1 bg-white border border-gray-200 text-xs rounded-full text-gray-500">🏙 수도권</button>
+    </div>
     <div id="status" class="text-center py-10 text-sm text-gray-400">
       <div class="w-6 h-6 border-2 border-gray-200 border-t-gray-600 rounded-full spin mx-auto mb-3"></div>
       공고를 불러오는 중...
@@ -478,7 +485,7 @@ const COMPANY_PROFILE = {
   /* 섹션 3·4: 사업 분야 / 기술 (버블 태그) */
   fields:    ['AI', '콘텐츠', '행사 운영', 'ESG'],
   techs:     ['LLM', 'OCR', '운영 플랫폼'],
-  fieldPool: ['AI', '플랫폼', '교육', '콘텐츠', 'ESG', '제조', '관광', '환경', '디지털전환', '행사 운영', 'B2B', '소셜벤처'],
+  fieldPool: ['AI', '플랫폼', '교육', '콘텐츠', 'ESG', '제조', '관광', '환경', '디지털전환', '행사 운영', '행사대행업', '행사운영', '경호', '미화', 'B2B', '소셜벤처'],
   techPool:  ['데이터 분석', '컴퓨터비전', '자동화', 'SaaS', 'IoT', 'LLM', 'OCR', '운영 플랫폼', 'NLP', '모바일 앱', 'API'],
   /* 섹션 5·6·9: 복수 입력 목록 */
   services:     [],
@@ -505,6 +512,7 @@ let profile      = JSON.parse(localStorage.getItem('me_profile')   || JSON.strin
 let activeTab    = '공고';
 let activeFilter = 'all';
 let activeSource = 'all';
+let activeRegion = 'all';
 /* 페이징 상태 */
 const pageState  = { 'K-Startup': 1, '나라장터': 1 };
 const PAGE_SIZES = { 'K-Startup': 50, '나라장터': 30 };
@@ -626,6 +634,14 @@ function applyFilters() {
   if (activeSource !== 'all') {
     filtered = filtered.filter(d => (d.source || 'K-Startup') === activeSource);
   }
+  if (activeRegion === '전국') {
+    filtered = filtered.filter(d => !d.region || d.region.includes('전국'));
+  } else if (activeRegion === '수도권') {
+    filtered = filtered.filter(d => {
+      const r = d.region || '';
+      return r.includes('전국') || r.includes('서울') || r.includes('경기') || r.includes('인천') || r.includes('수도권');
+    });
+  }
   if (activeFilter !== 'all') {
     filtered = filtered.filter(d => (d.category||'').includes(activeFilter) || (d.pblancNm||'').includes(activeFilter));
   }
@@ -661,6 +677,15 @@ function filterSource(src) {
     b.className = 'src-btn px-2.5 py-1 bg-white border border-gray-200 text-xs rounded-full text-gray-500';
   });
   document.getElementById('src-' + src).className = 'src-btn px-2.5 py-1 bg-gray-900 text-white text-xs rounded-full font-medium';
+  applyFilters();
+}
+
+function filterRegion(reg) {
+  activeRegion = reg;
+  document.querySelectorAll('.reg-btn').forEach(b => {
+    b.className = 'reg-btn px-2.5 py-1 bg-white border border-gray-200 text-xs rounded-full text-gray-500';
+  });
+  document.getElementById('reg-' + reg).className = 'reg-btn px-2.5 py-1 bg-gray-900 text-white text-xs rounded-full font-medium';
   applyFilters();
 }
 
@@ -812,6 +837,22 @@ async function openAnalysis(item) {
       </div>
     </div>
 
+    <!-- 나라장터 입찰 조건 분석 (나라장터 공고만 표시) -->
+    ${item.source === '나라장터' ? `
+    <div class="mb-5 border border-blue-100 rounded-2xl overflow-hidden">
+      <div class="flex justify-between items-center px-4 py-3 bg-blue-50">
+        <div>
+          <p class="text-sm font-bold text-blue-900">📋 입찰 조건 분석</p>
+          <p class="text-xs text-blue-500 mt-0.5">직생증 · 지역제한 · 실적 · 하도급 · 컨소 자동 추출</p>
+        </div>
+        <button onclick="runScreening()" id="btn-screening"
+          class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-full font-medium min-h-[36px]">분석 시작</button>
+      </div>
+      <div id="ai-screening" class="px-4 py-4 text-sm text-gray-400">
+        '분석 시작'을 누르면 입찰 참여 가능 여부를 자동으로 판단해드려요.
+      </div>
+    </div>` : ''}
+
     <!-- 사업계획서 초안 -->
     <div class="mb-3">
       <div class="flex justify-between items-center mb-2">
@@ -916,6 +957,130 @@ async function runBusinessPlan(item) {
     <div class="prose text-sm text-gray-800">${markdownToHTML(result)}</div>
     <p class="text-xs text-gray-300 mt-2 text-right">💾 결과가 저장되어 다음에도 볼 수 있어요</p>
     <button onclick="copyText('ai-bizplan')" class="mt-2 w-full py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">📋 복사하기</button>`;
+}
+
+/* ════ 나라장터 입찰 조건 분석 (스크리닝) ════ */
+async function runScreening() {
+  const item = _drawerItem;
+  if (!item) return;
+
+  const btn = document.getElementById('btn-screening');
+  const el  = document.getElementById('ai-screening');
+  if (btn) btn.disabled = true;
+
+  el.innerHTML = `<div class="flex items-center gap-2 text-gray-400 py-2">
+    <div class="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full spin flex-shrink-0"></div>
+    AI가 입찰 조건을 분석 중이에요...
+  </div>`;
+
+  const prompt = `아래 나라장터 공고 정보를 분석해서 JSON으로만 답하세요. 다른 텍스트는 포함하지 마세요.
+
+공고명: ${item.pblancNm}
+발주처: ${item.jrsdInsttNm || ''}
+공고 내용: ${item.target || item.category || ''}
+
+반환 형식:
+{
+  "직생증": "Y" | "N" | "불명확",
+  "지역제한": "없음" | "지역명",
+  "실적요건": "없음" | "금액 기준 설명",
+  "하도급": "Y" | "N" | "불명확",
+  "컨소시엄": "Y" | "N" | "불명확",
+  "입찰방식": "방식명",
+  "근거": "판단 근거 한 줄"
+}`;
+
+  let parsed = null;
+  try {
+    const res  = await fetch(AI_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    const text = (data.result || '').replace(/```json|```/g, '').trim();
+    parsed = JSON.parse(text);
+  } catch(e) {
+    el.innerHTML = `<div class="text-red-400 text-sm py-2">
+      분석에 실패했어요. 다시 시도해주세요.
+      <button onclick="runScreening()" class="ml-2 underline text-red-400">재시도</button>
+    </div>`;
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  /* 자동 패스 판정: 하도급 N AND 컨소 N */
+  const autoPass = parsed.하도급 === 'N' && parsed.컨소시엄 === 'N';
+  if (autoPass) {
+    setVerdict(item, '패스', '하도급불가');
+    // 컨소불가도 근거에 추가
+    const key = getVerdictKey(item);
+    if (verdicts[key]) {
+      verdicts[key].reasonCode  = '하도급불가';
+      verdicts[key].verdictBasis = parsed.근거 || '하도급·컨소시엄 모두 불가';
+      verdicts[key].screeningResult = parsed;
+      saveLocal('me_verdicts', verdicts);
+    }
+    toast('❌ 하도급·컨소 모두 불가 → 자동 패스 판정');
+    applyFilters();
+  } else {
+    // 패스가 아닌 경우에도 스크리닝 결과를 기존 판정에 저장
+    const key = getVerdictKey(item);
+    if (verdicts[key]) {
+      verdicts[key].verdictBasis    = parsed.근거 || '';
+      verdicts[key].bidMethod       = parsed.입찰방식 || '';
+      verdicts[key].screeningResult = parsed;
+      saveLocal('me_verdicts', verdicts);
+    }
+  }
+
+  /* 결과 렌더링 */
+  const badge = (val, yLabel, nLabel) => {
+    if (val === 'Y')   return `<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-bold">${yLabel}</span>`;
+    if (val === 'N')   return `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">${nLabel}</span>`;
+    return `<span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 text-xs font-bold">불명확</span>`;
+  };
+  const textBadge = (val) => {
+    if (!val || val === '없음') return `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">없음</span>`;
+    return `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">${escH(val)}</span>`;
+  };
+
+  el.innerHTML = `
+    ${autoPass ? `<div class="mb-3 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm font-bold text-red-600">
+      ❌ 자동 패스 판정 — 하도급·컨소시엄 모두 불가
+    </div>` : ''}
+    <div class="space-y-2.5">
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-500 font-medium">직생증 필요</span>
+        ${badge(parsed.직생증, '필요', '불필요')}
+      </div>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-500 font-medium">지역 제한</span>
+        ${textBadge(parsed.지역제한)}
+      </div>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-500 font-medium">실적 요건</span>
+        ${textBadge(parsed.실적요건)}
+      </div>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-500 font-medium">하도급 가능</span>
+        ${badge(parsed.하도급, '불가', '가능')}
+      </div>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-500 font-medium">컨소시엄 가능</span>
+        ${badge(parsed.컨소시엄, '불가', '가능')}
+      </div>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-500 font-medium">입찰 방식</span>
+        <span class="text-gray-700 font-medium text-xs">${escH(parsed.입찰방식 || '불명확')}</span>
+      </div>
+    </div>
+    <div class="mt-3 pt-3 border-t border-gray-100">
+      <p class="text-xs text-gray-400 leading-relaxed">📎 ${escH(parsed.근거 || '')}</p>
+      <p class="text-xs text-gray-300 mt-2">⚠️ AI 추정 · 원문 확인 필요</p>
+    </div>`;
+
+  if (btn) { btn.disabled = false; btn.textContent = '재분석'; }
 }
 
 /* ════ 카드 액션 헬퍼 (인라인 JSON 대신 인덱스 참조) ════ */
@@ -1091,6 +1256,15 @@ function renderVerdicts(filter) {
       <p class="font-bold text-sm leading-snug mb-1">${escH(v.pblancNm)}</p>
       <p class="text-xs text-gray-400 mb-2">${escH(v.jrsdInsttNm||'')}${v.source ? ` · <span class="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-gray-400 text-[10px] font-medium">${v.source}</span>` : ''}</p>
       ${reasonLabel ? `<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">${reasonLabel}</span>` : ''}
+      ${v.screeningResult ? `
+      <div class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap gap-1.5">
+        ${v.screeningResult.직생증 === 'Y' ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500 font-medium">📄 직생증필요</span>` : ''}
+        ${v.screeningResult.지역제한 && v.screeningResult.지역제한 !== '없음' ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium">🗺 ${escH(v.screeningResult.지역제한)}</span>` : ''}
+        ${v.screeningResult.하도급 === 'N' ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500 font-medium">🚫 하도급불가</span>` : ''}
+        ${v.screeningResult.컨소시엄 === 'N' ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500 font-medium">🤝 컨소불가</span>` : ''}
+        ${v.screeningResult.실적요건 && v.screeningResult.실적요건 !== '없음' ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">📉 실적요건있음</span>` : ''}
+        ${v.screeningResult.입찰방식 ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 font-medium">${escH(v.screeningResult.입찰방식)}</span>` : ''}
+      </div>` : ''}
       <div class="flex gap-2 mt-3">
         <a href="${v.pblancUrl||'#'}" target="_blank" class="flex-1 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold text-center">공고 보기 →</a>
         <button onclick="removeVerdict('${escQ(Object.keys(verdicts).find(k=>verdicts[k]===v)||'')}')" class="px-3 py-2 rounded-xl border border-red-100 text-red-400 text-xs">삭제</button>
@@ -1116,27 +1290,32 @@ function exportVerdicts() {
     '사업예산(원, VAT포함)', '입찰·계약방식', '배점구조', '제출마감', '제출방법', 'PT',
     '판정', '사유코드', '판정 근거(공고문 조항)', '스크리닝 소요(분)', '최종결과', '교훈·비고'
   ];
-  const rows = list.map((v, i) => [
-    i + 1,                          // No
-    v.foundAt    || '',             // 발견일 (추후 추가 예정)
-    v.verdictAt  || '',             // 판정일
-    v.pblancNo   || '',             // 공고번호 (추후 AI 추출 예정)
-    v.pblancNm   || '',             // 공고명
-    v.jrsdInsttNm || '',            // 발주처
-    v.source     || '',             // 탐색채널
-    v.budget     || '',             // 사업예산 (추후 AI 추출 예정)
-    v.contractType || '',           // 입찰·계약방식 (추후 AI 추출 예정)
-    v.evalStructure || '',          // 배점구조 (추후 AI 추출 예정)
-    v.endDe ? fmtDate(v.endDe) : '', // 제출마감
-    v.submitMethod || '',           // 제출방법 (추후 AI 추출 예정)
-    v.hasPT      || '',             // PT (추후 AI 추출 예정)
-    v.verdict    || '',             // 판정
-    v.reasonCode || '',             // 사유코드
-    v.verdictBasis || '',           // 판정 근거
-    v.screeningMin || '',           // 스크리닝 소요(분)
-    v.finalResult || '',            // 최종결과
-    v.memo       || '',             // 교훈·비고
-  ].map(c => `"${String(c).replace(/"/g,'""')}"`).join(','));
+  const rows = list.map((v, i) => {
+    const sc = v.screeningResult || {};
+    const bidMethod = v.bidMethod || sc.입찰방식 || v.contractType || '';
+    const basis = v.verdictBasis || sc.근거 || '';
+    return [
+      i + 1,
+      v.foundAt     || '',
+      v.verdictAt   || '',
+      v.pblancNo    || '',
+      v.pblancNm    || '',
+      v.jrsdInsttNm || '',
+      v.source      || '',
+      v.budget      || '',
+      bidMethod,
+      v.evalStructure || '',
+      v.endDe ? fmtDate(v.endDe) : '',
+      v.submitMethod || '',
+      v.hasPT        || '',
+      v.verdict      || '',
+      v.reasonCode   || '',
+      basis,
+      v.screeningMin || '',
+      v.finalResult  || '',
+      v.memo         || '',
+    ].map(c => `"${String(c).replace(/"/g,'""')}"`).join(',');
+  });
   const csv = [headers.join(','), ...rows].join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
