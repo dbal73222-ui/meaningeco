@@ -10,7 +10,7 @@
 const https = require('https');
 
 const BASE_HOST = 'apis.data.go.kr';
-const BID_PATH  = '/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc';  // 서비스 입찰공고
+const BID_PATH  = '/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc';
 
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
@@ -22,35 +22,32 @@ function httpsGet(url) {
   });
 }
 
-/** XML 응답 파싱 */
-function getTag(xml, tag) {
-  const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
-  if (!m) return '';
-  return m[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
-}
-
+/** JSON 응답 파싱 */
 function parseResponse(body) {
   try {
-    const items = [];
-    const re = /<item>([\s\S]*?)<\/item>/g;
-    let m;
-    while ((m = re.exec(body)) !== null) {
-      const b = m[1];
-      items.push({
-        pblancNm:    getTag(b, 'bidNtceNm')          || '',
-        pblancUrl:   getTag(b, 'bidNtceUrl')          || 'https://www.g2b.go.kr',
-        jrsdInsttNm: getTag(b, 'ntceInsttNm')         || '',
-        excInsttNm:  getTag(b, 'dminsttNm')           || '',
-        category:    getTag(b, 'pubPrcrmntLrgClsfcNm') || getTag(b, 'srvceDivNm') || '용역',
-        region:      getTag(b, 'ntceInsttOfclNm')      || '전국',
-        startDe:     (getTag(b, 'bidNtceDt') || '').replace(/[^0-9]/g, '').slice(0, 8),
-        endDe:       (getTag(b, 'bidClseDt') || '').replace(/[^0-9]/g, '').slice(0, 8),
-        target:      getTag(b, 'cntrctCnclsMthdNm')   || '',
-        source:      '나라장터',
-      });
-    }
-    const totalCount = body.match(/<totalCount>([\s\S]*?)<\/totalCount>/)?.[1]?.trim() || '0';
-    return { items, totalCount };
+    const json = JSON.parse(body);
+    const items = json?.response?.body?.items?.item || [];
+    const totalCount = json?.response?.body?.totalCount || 0;
+    const list = Array.isArray(items) ? items : [items];
+    return {
+      items: list.map(it => ({
+        pblancNm:     it.bidNtceNm       || '',
+        pblancNo:     it.bidNtceNo       || '',
+        pblancUrl:    it.bidNtceUrl      || 'https://www.g2b.go.kr',
+        jrsdInsttNm:  it.ntceInsttNm     || '',
+        excInsttNm:   it.dminsttNm       || '',
+        category:     it.prdctClsfcNm    || it.ntceKindNm || '조달',
+        region:       it.ntceInsttOfclNm || '전국',
+        startDe:      (it.bidNtceDt || '').replace(/[^0-9]/g, '').slice(0, 8),
+        endDe:        (it.bidClseDt || '').replace(/[^0-9]/g, '').slice(0, 8),
+        target:       it.reqrmnDcmntNm   || '',
+        budget:       it.presmptPrce     || '',
+        bidMethod:    it.bidMethdNm      || '',
+        submitMethod: it.bidNtceMthdNm   || '',
+        source:       '나라장터',
+      })),
+      totalCount,
+    };
   } catch {
     return { items: [], totalCount: 0 };
   }
@@ -77,7 +74,6 @@ exports.handler = async event => {
   const pageNo    = p.pageNo    || '1';
   const numOfRows = p.numOfRows || '30';
 
-  // 날짜 범위: 오늘 ~ 한 달 후 (yyyyMMddHHmm 형식)
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
   const fmt = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
