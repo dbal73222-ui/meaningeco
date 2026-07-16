@@ -38,7 +38,6 @@ function parseResponse(body) {
       const b = m[1];
       items.push({
         pblancNm:    getTag(b, 'bidNtceNm')          || '',
-        pblancNo:    getTag(b, 'bidNtceNo')           || '',
         pblancUrl:   getTag(b, 'bidNtceUrl')          || 'https://www.g2b.go.kr',
         jrsdInsttNm: getTag(b, 'ntceInsttNm')         || '',
         excInsttNm:  getTag(b, 'dminsttNm')           || '',
@@ -47,9 +46,6 @@ function parseResponse(body) {
         startDe:     (getTag(b, 'bidNtceDt') || '').replace(/[^0-9]/g, '').slice(0, 8),
         endDe:       (getTag(b, 'bidClseDt') || '').replace(/[^0-9]/g, '').slice(0, 8),
         target:      getTag(b, 'cntrctCnclsMthdNm')   || '',
-        budget:      getTag(b, 'presmptPrce')          || '',
-        bidMethod:   getTag(b, 'bidMethdNm')           || '',
-        submitMethod:getTag(b, 'bidNtceMthdNm')        || '',
         source:      '나라장터',
       });
     }
@@ -90,7 +86,7 @@ exports.handler = async event => {
   const inqryEndDt = fmt(end);
 
   const url = `https://${BASE_HOST}${BID_PATH}?serviceKey=${encodeURIComponent(KEY)}`
-            + `&pageNo=${pageNo}&numOfRows=${numOfRows}`
+            + `&pageNo=${pageNo}&numOfRows=${numOfRows}&type=json`
             + `&inqryDiv=1&inqryBgnDt=${inqryBgnDt}&inqryEndDt=${inqryEndDt}`;
 
   try {
