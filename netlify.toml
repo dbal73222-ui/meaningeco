@@ -27,3 +27,8 @@
   from   = "/api/bizinfo2"
   to     = "/.netlify/functions/bizinfo2"
   status = 200
+
+[[redirects]]
+  from = "/api/sheets"
+  to = "/.netlify/functions/sheets"
+  status = 200
