@@ -1023,8 +1023,8 @@ async function openAnalysis(item) {
 /* ════ AI 호출 (공통) ════ */
 async function callAI(prompt, targetId, placeholder) {
   const el = document.getElementById(targetId);
-  el.innerHTML = `...`;
-  await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+  el.innerHTML = `<div class="flex items-center gap-2 text-gray-400"><div class="w-4 h-4 border-2 border-gray-200 border-t-gray-600 rounded-full spin"></div> AI가 분석 중이에요...</div>`;
+  await new Promise(r => setTimeout(r, 1000 + Math.random() * 1500));
   try {
     const res = await fetch(AI_PROXY, {
       method: 'POST',
@@ -1034,7 +1034,6 @@ async function callAI(prompt, targetId, placeholder) {
     const data = await res.json();
     return data.result || '결과를 가져오지 못했어요.';
   } catch(e) {
-    /* 네트워크 없을 때 목업 */
     return placeholder;
   }
 }
