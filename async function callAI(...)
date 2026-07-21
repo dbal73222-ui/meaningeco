@@ -1026,14 +1026,24 @@ async function callAI(prompt, targetId, placeholder) {
   el.innerHTML = `<div class="flex items-center gap-2 text-gray-400"><div class="w-4 h-4 border-2 border-gray-200 border-t-gray-600 rounded-full spin"></div> AI가 분석 중이에요...</div>`;
   await new Promise(r => setTimeout(r, 1000 + Math.random() * 1500));
   try {
-    const res = await fetch(AI_PROXY, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
-    const data = await res.json();
-    return data.result || '결과를 가져오지 못했어요.';
-  } catch(e) {
+const res = await fetch(AI_PROXY, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ prompt })
+});
+
+console.log("AI STATUS =", res.status);
+console.log("AI OK =", res.ok);
+
+const text = await res.text();
+console.log("AI BODY =", text);
+
+if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+}
+
+const data = JSON.parse(text);
+return data.result || '결과를 가져오지 못했어요.';  } catch(e) {
     return placeholder;
   }
 }
