@@ -1028,23 +1028,23 @@ async function callAI(prompt, targetId, placeholder) {
   try {
 const res = await fetch(AI_PROXY, {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json'
+  },
   body: JSON.stringify({ prompt })
 });
 
-console.log("AI STATUS =", res.status);
-console.log("AI OK =", res.ok);
+console.log("AI STATUS:", res.status);
 
-const text = await res.text();
-console.log("AI BODY =", text);
+const body = await res.text();
+console.log("AI BODY:", body);
 
 if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+  throw new Error(`HTTP ${res.status}`);
 }
 
-const data = JSON.parse(text);
-return data.result || '결과를 가져오지 못했어요.';  } catch(e) {
-    return placeholder;
+const data = JSON.parse(body);
+return data.result || placeholder;
   }
 }
 
