@@ -2220,30 +2220,41 @@ async function callAIWithCache(prompt, targetId, placeholder, cacheType, itemNam
   const cache = getAICache();
   const key   = cacheKey(cacheType, itemName);
 
-  console.log('[CACHE] key:', key);
-  console.log('[CACHE] existing:', cache[key]);
-
+  // 기존 캐시 검사
   if (cache[key]) {
-    console.log('[CACHE] HIT');
-    return cache[key];
+    const cached = cache[key];
+
+    // 오류 캐시는 즉시 삭제 후 재호출
+    if (typeof cached === 'string' &&
+        (cached.includes('오류') ||
+         cached.includes('403') ||
+         cached.includes('Forbidden'))) {
+      console.log('[CACHE] remove invalid cache:', key);
+      delete cache[key];
+      saveAICache(cache);
+    } else {
+      console.log('[CACHE] HIT:', key);
+      return cached;
+    }
   }
 
-  console.log('[CACHE] MISS → calling AI');
-
+  // AI 호출
   const result = await callAI(prompt, targetId, placeholder);
 
-  console.log('[CACHE] result type:', typeof result);
-  console.log('[CACHE] result value:', result);
-  console.log('[CACHE] includes 오류:', typeof result === 'string' ? result.includes('오류') : 'NOT STRING');
+  // 정상 결과만 저장
+  if (typeof result === 'string' &&
+      result &&
+      result !== placeholder &&
+      !result.includes('오류') &&
+      !result.includes('403') &&
+      !result.includes('Forbidden')) {
 
-  if (result && result !== placeholder && typeof result === 'string' && !result.includes('오류')) {
-    console.log('[CACHE] SAVE');
     cache[key] = result;
+
     const keys = Object.keys(cache);
     if (keys.length > 50) delete cache[keys[0]];
+
     saveAICache(cache);
-  } else {
-    console.log('[CACHE] NOT SAVED');
   }
 
   return result;
