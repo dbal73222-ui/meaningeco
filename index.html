@@ -2219,16 +2219,33 @@ function cacheKey(type, name) { return `${type}::${name}`; }
 async function callAIWithCache(prompt, targetId, placeholder, cacheType, itemName) {
   const cache = getAICache();
   const key   = cacheKey(cacheType, itemName);
+
+  console.log('[CACHE] key:', key);
+  console.log('[CACHE] existing:', cache[key]);
+
   if (cache[key]) {
+    console.log('[CACHE] HIT');
     return cache[key];
   }
+
+  console.log('[CACHE] MISS → calling AI');
+
   const result = await callAI(prompt, targetId, placeholder);
-  if (result && result !== placeholder && !result.includes('오류')) {
+
+  console.log('[CACHE] result type:', typeof result);
+  console.log('[CACHE] result value:', result);
+  console.log('[CACHE] includes 오류:', typeof result === 'string' ? result.includes('오류') : 'NOT STRING');
+
+  if (result && result !== placeholder && typeof result === 'string' && !result.includes('오류')) {
+    console.log('[CACHE] SAVE');
     cache[key] = result;
     const keys = Object.keys(cache);
     if (keys.length > 50) delete cache[keys[0]];
     saveAICache(cache);
+  } else {
+    console.log('[CACHE] NOT SAVED');
   }
+
   return result;
 }
 /* ════ 온보딩 배너 ════ */
