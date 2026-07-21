@@ -1024,28 +1024,23 @@ async function openAnalysis(item) {
 async function callAI(prompt, targetId, placeholder) {
   const el = document.getElementById(targetId);
   el.innerHTML = `<div class="flex items-center gap-2 text-gray-400"><div class="w-4 h-4 border-2 border-gray-200 border-t-gray-600 rounded-full spin"></div> AI가 분석 중이에요...</div>`;
-  await new Promise(r => setTimeout(r, 1000 + Math.random() * 1500));
-  try {
-const res = await fetch(AI_PROXY, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({ prompt })
-});
-
-console.log("AI STATUS:", res.status);
-
-const body = await res.text();
-console.log("AI BODY:", body);
-
-if (!res.ok) {
-  throw new Error(`HTTP ${res.status}`);
-}
-
-const data = JSON.parse(body);
-return data.result || placeholder;
+  
+  for (let i = 0; i < 3; i++) {
+    await new Promise(r => setTimeout(r, i * 2000));
+    try {
+      const res = await fetch(AI_PROXY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      const data = await res.json();
+      if (data.result && !data.result.includes('오류')) {
+        return data.result;
+      }
+    } catch(e) {}
   }
+  return placeholder;
+}
 }
 
 async function runAISummary(name, org, target, category) {
