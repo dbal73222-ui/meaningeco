@@ -2216,7 +2216,8 @@ function getAICache() { return JSON.parse(localStorage.getItem(AI_CACHE_KEY) || 
 function saveAICache(cache) { localStorage.setItem(AI_CACHE_KEY, JSON.stringify(cache)); }
 function cacheKey(type, name) { return `${type}::${name}`; }
 
-async function callAIWithCache(prompt, targetId, placeholder, cacheType, itemName) {
+async function callAIWithCache(prompt, targetId, placeholder, cacheType, itemName) 
+console.log("CACHE VERSION 2026-07-21 15:30");{
   const cache = getAICache();
   const key   = cacheKey(cacheType, itemName);
 
