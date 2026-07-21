@@ -2217,27 +2217,29 @@ function saveAICache(cache) { localStorage.setItem(AI_CACHE_KEY, JSON.stringify(
 function cacheKey(type, name) { return `${type}::${name}`; }
 
 async function callAIWithCache(prompt, targetId, placeholder, cacheType, itemName) 
-console.log("CACHE VERSION 2026-07-21 15:30");{
-  const cache = getAICache();
-  const key   = cacheKey(cacheType, itemName);
+console.log("[CACHE] key:", key);
 
-  // 기존 캐시 검사
-  if (cache[key]) {
-    const cached = cache[key];
+if (cache[key]) {
+  console.log("[CACHE] FOUND", cache[key]);
 
-    // 오류 캐시는 즉시 삭제 후 재호출
-    if (typeof cached === 'string' &&
-        (cached.includes('오류') ||
-         cached.includes('403') ||
-         cached.includes('Forbidden'))) {
-      console.log('[CACHE] remove invalid cache:', key);
-      delete cache[key];
-      saveAICache(cache);
-    } else {
-      console.log('[CACHE] HIT:', key);
-      return cached;
-    }
+  const cached = cache[key];
+
+  if (typeof cached === 'string' &&
+      (cached.includes('오류') ||
+       cached.includes('403') ||
+       cached.includes('Forbidden'))) {
+
+    console.log("[CACHE] DELETE");
+    delete cache[key];
+    saveAICache(cache);
+
+  } else {
+    console.log("[CACHE] RETURN CACHE");
+    return cached;
   }
+}
+
+console.log("[CACHE] CALL AI");
 
   // AI 호출
   const result = await callAI(prompt, targetId, placeholder);
