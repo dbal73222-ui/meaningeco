@@ -1,0 +1,15 @@
+name = "meaningeco"
+compatibility_date = "2026-07-21"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "."
+not_found_handling = "single-page-application"
+
+[[routes]]
+pattern = "/api/ai"
+script = "workers/ai.js"
+
+[[routes]]
+pattern = "/api/sheets"
+script = "workers/sheets.js"
