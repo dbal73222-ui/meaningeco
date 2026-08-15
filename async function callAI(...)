@@ -1405,8 +1405,8 @@ function setVerdict(item, verdict, reasonCode) {
 async function syncToSheets(v) {
   if (!v) return;
   try {
-    const res = await fetch('/api/sheets', {
-      method: 'POST',
+const res = await fetch(SHEETS_WEBHOOK, {
+method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         pblancNo:      v.pblancNo      || '',
